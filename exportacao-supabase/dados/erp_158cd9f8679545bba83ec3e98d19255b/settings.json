@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "cnpj": "",
+    "mode": "essential",
+    "name": "nbcriacoes",
+    "paper": 80,
+    "phone": "",
+    "address": "",
+    "logo_key": null,
+    "debit_days": 1,
+    "legal_name": "",
+    "updated_at": "2026-11-14T03:13:49.145Z",
+    "blind_close": 0,
+    "credit_days": 30,
+    "theme_color": "#6a330d",
+    "business_kind": "food",
+    "debit_fee_bps": null,
+    "credit_fee_bps": null,
+    "receipt_message": "Obrigado pela preferência! Volte sempre."
+  }
+]

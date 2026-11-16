@@ -1,0 +1,54 @@
+[
+  {
+    "role": "admin",
+    "active": true,
+    "user_id": "eb0fe0dc-2a94-4592-9a0d-bf6468fb4345",
+    "version": 1,
+    "username": "nira",
+    "created_at": "2026-11-14T02:39:27.975843+00:00",
+    "business_id": "d9c47d63-ff10-4ff6-b4c9-2a2b3e71ace9",
+    "login_email": "owner.0b714921-d5dd-4ae1-bcd1-5ce24b83f237@users.invalid",
+    "permissions": {},
+    "display_name": "nira",
+    "must_change_password": true
+  },
+  {
+    "role": "admin",
+    "active": true,
+    "user_id": "1df44fd8-9ace-47c0-b25f-887d9fc7cc53",
+    "version": 1,
+    "username": "nira",
+    "created_at": "2026-11-14T02:42:50.568161+00:00",
+    "business_id": "158cd9f8-6795-45bb-a83e-c3e98d19255b",
+    "login_email": "owner.7997fd13-603d-41bc-b050-31a2acdf6791@users.invalid",
+    "permissions": {},
+    "display_name": "nira",
+    "must_change_password": false
+  },
+  {
+    "role": "waiter",
+    "active": true,
+    "user_id": "a37a0f96-9068-40e4-90a0-b0b9dffba55f",
+    "version": 1,
+    "username": "lucivan",
+    "created_at": "2026-11-14T02:46:25.941015+00:00",
+    "business_id": "158cd9f8-6795-45bb-a83e-c3e98d19255b",
+    "login_email": "staff.da8403b4-0d77-4c81-add2-13906682c551@users.invalid",
+    "permissions": {},
+    "display_name": "ATENDENTE 01",
+    "must_change_password": true
+  },
+  {
+    "role": "cashier",
+    "active": true,
+    "user_id": "c017e5a8-f182-4991-9074-0e6ddf4572a2",
+    "version": 1,
+    "username": "lucivan02",
+    "created_at": "2026-11-14T02:47:19.554377+00:00",
+    "business_id": "158cd9f8-6795-45bb-a83e-c3e98d19255b",
+    "login_email": "staff.412374d3-eb85-44ac-88f4-5ceca20ad947@users.invalid",
+    "permissions": {},
+    "display_name": "ATENDENTE 02",
+    "must_change_password": false
+  }
+]

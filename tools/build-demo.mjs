@@ -1,0 +1,21 @@
+import fs from 'node:fs';import path from 'node:path';
+const root=path.resolve(import.meta.dirname,'..'),target=root+'/web/demo';fs.mkdirSync(target,{recursive:true});
+let engine=fs.readFileSync(root+'/backend/commerce/core.js','utf8');
+// Browser-local Requests may omit the forbidden Origin header. Only the in-memory demo accepts omission.
+engine=engine.replace("if(origin!==new URL(req.url).origin)","if(origin&&origin!==new URL(req.url).origin)").replace("if(req.headers.get('origin')!==new URL(req.url).origin)","if(req.headers.get('origin')&&req.headers.get('origin')!==new URL(req.url).origin)");
+fs.writeFileSync(target+'/engine.js',engine);
+const migrations='/workspace/sites/mesa-caixa/drizzle';
+let schema=fs.readdirSync(migrations).filter(n=>/^000[0-8].*\.sql$/.test(n)&&!n.startsWith('0007')).sort().map(n=>fs.readFileSync(migrations+'/'+n,'utf8')).join('\n');
+schema+=`\nALTER TABLE settings ADD COLUMN business_kind TEXT NOT NULL DEFAULT 'food';ALTER TABLE settings ADD COLUMN logo_key TEXT;ALTER TABLE settings ADD COLUMN theme_color TEXT DEFAULT '#a44924';
+ALTER TABLE products ADD COLUMN barcode TEXT;CREATE UNIQUE INDEX product_barcode_unique ON products(barcode);ALTER TABLE products ADD COLUMN sale_unit TEXT DEFAULT 'un';ALTER TABLE products ADD COLUMN packaging TEXT DEFAULT '';ALTER TABLE products ADD COLUMN stock_mode TEXT DEFAULT 'none';ALTER TABLE products ADD COLUMN finished_inventory_id TEXT;
+CREATE TABLE customers(id TEXT PRIMARY KEY,name TEXT,phone TEXT,email TEXT,document TEXT,notes TEXT,active INTEGER,version INTEGER DEFAULT 1,created_at TEXT,updated_at TEXT);ALTER TABLE orders ADD COLUMN customer_id TEXT;ALTER TABLE orders ADD COLUMN customer_name TEXT DEFAULT '';ALTER TABLE orders ADD COLUMN exchange_from_order_id TEXT;
+CREATE TABLE product_import_rows(request_key TEXT PRIMARY KEY,fingerprint TEXT,actor_id TEXT,product_id TEXT,created_at TEXT);CREATE TABLE sale_returns(id TEXT PRIMARY KEY,request_key TEXT UNIQUE,fingerprint TEXT,order_id TEXT,kind TEXT,items TEXT,amount_cents INTEGER,restored_cost_cents INTEGER,unknown_cost_quantity INTEGER,original_closed_at TEXT,replacement_order_id TEXT,actor_id TEXT,reason TEXT,created_at TEXT);CREATE TABLE sale_return_lines(return_id TEXT,item_id TEXT,product_id TEXT,quantity INTEGER,refund_cents INTEGER,restocked INTEGER,unit_cost_cents INTEGER,inventory_id TEXT,PRIMARY KEY(return_id,item_id));
+CREATE TRIGGER refund_negative BEFORE INSERT ON ledger WHEN NEW.kind='refund' AND NEW.amount_cents>=0 BEGIN SELECT RAISE(ABORT,'refund_amount_negative'); END;`;
+fs.writeFileSync(target+'/schema.sql',schema);
+let html=fs.readFileSync(root+'/web/system/index.html','utf8').replace('<title>Minha lanchonete · Gestão da lanchonete</title>','<title>Demonstração · Sabor da Vila</title><meta name="robots" content="noindex,nofollow">');
+html=html.replace(/<script src="(?:\/supabase[^\"]*|\/config.js|bootstrap.js|help.js)"[^>]*><\/script>/g,'');
+html=html.replace(/(src|href)="([^/#][^"]*\.(?:js|css))"/g,'$1="/system/$2"');
+html=html.replace('<script src="/system/app.js"','<script src="/demo/runtime.js" defer></script><script src="/system/app.js"');
+html=html.replace('</head>','<link rel="stylesheet" href="/demo/demo.css"></head>').replace('</body>','<script src="/demo/demo-ui.js" defer></script></body>');
+html=html.replace('src="/system/brand.svg"','src="/demo/assets/logo.svg"').replace('<body>','<body class="demo-mode"><section id="demoBar" class="demo-bar" aria-label="Área de demonstração"><div><strong>DEMONSTRAÇÃO PÚBLICA</strong><span>Empresa fictícia · Alterações só nesta aba</span></div><label>Experimentar como<select id="demoRole"><option value="admin">Proprietário</option><option value="cashier">Caixa</option><option value="waiter">Garçom</option></select></label><button id="demoGuide" type="button">Como experimentar</button><button id="demoReset" type="button">Reiniciar exemplo</button><a href="/">Voltar ao login</a><p id="demoStatus" role="status">Preparando os produtos e o histórico de demonstração…</p></section>');
+fs.writeFileSync(target+'/index.html',html);console.log('Demo: mesmas telas e motor comercial; nenhuma conexão de autenticação ou banco remoto.');

@@ -1,0 +1,326 @@
+[
+  {
+    "name": "backend_only",
+    "check": "true",
+    "roles": [
+      "service_role"
+    ],
+    "table": "business_presence",
+    "using": "true",
+    "schema": "public",
+    "command": "*",
+    "permissive": true
+  },
+  {
+    "name": "backend_only",
+    "check": "true",
+    "roles": [
+      "service_role"
+    ],
+    "table": "support_tickets",
+    "using": "true",
+    "schema": "public",
+    "command": "*",
+    "permissive": true
+  },
+  {
+    "name": "backend_only",
+    "check": "true",
+    "roles": [
+      "service_role"
+    ],
+    "table": "support_messages",
+    "using": "true",
+    "schema": "public",
+    "command": "*",
+    "permissive": true
+  },
+  {
+    "name": "backend_only",
+    "check": "true",
+    "roles": [
+      "service_role"
+    ],
+    "table": "support_email_outbox",
+    "using": "true",
+    "schema": "public",
+    "command": "*",
+    "permissive": true
+  },
+  {
+    "name": "backend_only",
+    "check": "true",
+    "roles": [
+      "service_role"
+    ],
+    "table": "customers",
+    "using": "true",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "command": "*",
+    "permissive": true
+  },
+  {
+    "name": "backend_only",
+    "check": null,
+    "roles": [
+      "service_role"
+    ],
+    "table": "commerce_version",
+    "using": "true",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "command": "r",
+    "permissive": true
+  },
+  {
+    "name": "backend_only",
+    "check": "true",
+    "roles": [
+      "service_role"
+    ],
+    "table": "customers",
+    "using": "true",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "command": "*",
+    "permissive": true
+  },
+  {
+    "name": "backend_only",
+    "check": null,
+    "roles": [
+      "service_role"
+    ],
+    "table": "commerce_version",
+    "using": "true",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "command": "r",
+    "permissive": true
+  },
+  {
+    "name": "backend_only",
+    "check": "true",
+    "roles": [
+      "service_role"
+    ],
+    "table": "business_deletions",
+    "using": "true",
+    "schema": "public",
+    "command": "*",
+    "permissive": true
+  },
+  {
+    "name": "membership_self",
+    "check": null,
+    "roles": [
+      "authenticated"
+    ],
+    "table": "business_members",
+    "using": "((user_id = ( SELECT auth.uid() AS uid)) AND active)",
+    "schema": "public",
+    "command": "r",
+    "permissive": true
+  },
+  {
+    "name": "business_profiles_read",
+    "check": null,
+    "roles": [
+      "authenticated"
+    ],
+    "table": "business_profiles",
+    "using": "(EXISTS ( SELECT 1\n   FROM business_members m\n  WHERE ((m.business_id = business_profiles.business_id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND m.active)))",
+    "schema": "public",
+    "command": "r",
+    "permissive": true
+  },
+  {
+    "name": "business_member_read",
+    "check": null,
+    "roles": [
+      "authenticated"
+    ],
+    "table": "businesses",
+    "using": "((owner_user_id = ( SELECT auth.uid() AS uid)) OR (EXISTS ( SELECT 1\n   FROM business_members m\n  WHERE ((m.business_id = businesses.id) AND (m.user_id = ( SELECT auth.uid() AS uid)) AND m.active))))",
+    "schema": "public",
+    "command": "r",
+    "permissive": true
+  },
+  {
+    "name": "auth_login_slots_backend_only",
+    "check": "true",
+    "roles": [
+      "service_role"
+    ],
+    "table": "auth_login_slots",
+    "using": "true",
+    "schema": "public",
+    "command": "*",
+    "permissive": true
+  },
+  {
+    "name": "platform_admins_backend",
+    "check": "true",
+    "roles": [
+      "service_role"
+    ],
+    "table": "platform_admins",
+    "using": "true",
+    "schema": "public",
+    "command": "*",
+    "permissive": true
+  },
+  {
+    "name": "platform_setup_backend",
+    "check": "true",
+    "roles": [
+      "service_role"
+    ],
+    "table": "platform_setup",
+    "using": "true",
+    "schema": "public",
+    "command": "*",
+    "permissive": true
+  },
+  {
+    "name": "support_sessions_backend",
+    "check": "true",
+    "roles": [
+      "service_role"
+    ],
+    "table": "support_sessions",
+    "using": "true",
+    "schema": "public",
+    "command": "*",
+    "permissive": true
+  },
+  {
+    "name": "access_audit_backend_append",
+    "check": "true",
+    "roles": [
+      "service_role"
+    ],
+    "table": "access_audit",
+    "using": null,
+    "schema": "public",
+    "command": "a",
+    "permissive": true
+  },
+  {
+    "name": "access_audit_backend_read",
+    "check": null,
+    "roles": [
+      "service_role"
+    ],
+    "table": "access_audit",
+    "using": "true",
+    "schema": "public",
+    "command": "r",
+    "permissive": true
+  },
+  {
+    "name": "registration_permits_auth_consume",
+    "check": null,
+    "roles": [
+      "supabase_auth_admin"
+    ],
+    "table": "managed_registration_permits",
+    "using": "true",
+    "schema": "public",
+    "command": "d",
+    "permissive": true
+  },
+  {
+    "name": "registration_permits_auth_read",
+    "check": null,
+    "roles": [
+      "supabase_auth_admin"
+    ],
+    "table": "managed_registration_permits",
+    "using": "true",
+    "schema": "public",
+    "command": "r",
+    "permissive": true
+  },
+  {
+    "name": "registration_permits_backend",
+    "check": "true",
+    "roles": [
+      "service_role"
+    ],
+    "table": "managed_registration_permits",
+    "using": "true",
+    "schema": "public",
+    "command": "*",
+    "permissive": true
+  },
+  {
+    "name": "backend_only",
+    "check": "true",
+    "roles": [
+      "service_role"
+    ],
+    "table": "product_import_rows",
+    "using": "true",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "command": "*",
+    "permissive": true
+  },
+  {
+    "name": "backend_only",
+    "check": "true",
+    "roles": [
+      "service_role"
+    ],
+    "table": "sale_return_lines",
+    "using": "true",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "command": "*",
+    "permissive": true
+  },
+  {
+    "name": "backend_only",
+    "check": "true",
+    "roles": [
+      "service_role"
+    ],
+    "table": "sale_returns",
+    "using": "true",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "command": "*",
+    "permissive": true
+  },
+  {
+    "name": "backend_only",
+    "check": "true",
+    "roles": [
+      "service_role"
+    ],
+    "table": "product_import_rows",
+    "using": "true",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "command": "*",
+    "permissive": true
+  },
+  {
+    "name": "backend_only",
+    "check": "true",
+    "roles": [
+      "service_role"
+    ],
+    "table": "sale_return_lines",
+    "using": "true",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "command": "*",
+    "permissive": true
+  },
+  {
+    "name": "backend_only",
+    "check": "true",
+    "roles": [
+      "service_role"
+    ],
+    "table": "sale_returns",
+    "using": "true",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "command": "*",
+    "permissive": true
+  }
+]

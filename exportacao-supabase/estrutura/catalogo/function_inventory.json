@@ -1,0 +1,162 @@
+[
+  {
+    "acl": "{postgres=X/postgres,service_role=X/postgres}",
+    "oid": "17734",
+    "args": "p_key text",
+    "name": "business_login_slot",
+    "owner": "postgres",
+    "schema": "public"
+  },
+  {
+    "acl": "{postgres=X/postgres,service_role=X/postgres}",
+    "oid": "17732",
+    "args": "p_owner uuid, p_name text",
+    "name": "bootstrap_business",
+    "owner": "postgres",
+    "schema": "public"
+  },
+  {
+    "acl": "{postgres=X/postgres,service_role=X/postgres}",
+    "oid": "17733",
+    "args": "p_user uuid, p_session uuid",
+    "name": "business_auth_session_valid",
+    "owner": "postgres",
+    "schema": "public"
+  },
+  {
+    "acl": "{postgres=X/postgres,supabase_auth_admin=X/postgres}",
+    "oid": "17819",
+    "args": "",
+    "name": "require_managed_registration",
+    "owner": "postgres",
+    "schema": "app_internal"
+  },
+  {
+    "acl": "{postgres=X/postgres,service_role=X/postgres}",
+    "oid": "17817",
+    "args": "p_hash text, p_user uuid, p_name text",
+    "name": "complete_platform_setup",
+    "owner": "postgres",
+    "schema": "public"
+  },
+  {
+    "acl": "{postgres=X/postgres,service_role=X/postgres}",
+    "oid": "17835",
+    "args": "p_business uuid",
+    "name": "ensure_erp",
+    "owner": "postgres",
+    "schema": "app_internal"
+  },
+  {
+    "acl": "{postgres=X/postgres,service_role=X/postgres}",
+    "oid": "17839",
+    "args": "p_business uuid, p_commands jsonb",
+    "name": "erp_run",
+    "owner": "postgres",
+    "schema": "public"
+  },
+  {
+    "acl": "{postgres=X/postgres,service_role=X/postgres}",
+    "oid": "18471",
+    "args": "p_business uuid, p_actor uuid, p_name text, p_role text, p_route text",
+    "name": "support_heartbeat",
+    "owner": "postgres",
+    "schema": "public"
+  },
+  {
+    "acl": "{postgres=X/postgres,service_role=X/postgres}",
+    "oid": "18473",
+    "args": "p_business uuid, p_actor uuid, p_name text, p_request uuid, p_subject text, p_category text, p_priority text, p_message text",
+    "name": "support_create_ticket",
+    "owner": "postgres",
+    "schema": "public"
+  },
+  {
+    "acl": "{postgres=X/postgres,service_role=X/postgres}",
+    "oid": "18472",
+    "args": "",
+    "name": "support_overview",
+    "owner": "postgres",
+    "schema": "public"
+  },
+  {
+    "acl": "{postgres=X/postgres,service_role=X/postgres}",
+    "oid": "18474",
+    "args": "p_ticket uuid, p_actor uuid, p_name text, p_side text, p_request uuid, p_message text, p_status text, p_version integer",
+    "name": "support_reply",
+    "owner": "postgres",
+    "schema": "public"
+  },
+  {
+    "acl": "{postgres=X/postgres,service_role=X/postgres}",
+    "oid": "18477",
+    "args": "p_business uuid",
+    "name": "commerce_prepare",
+    "owner": "postgres",
+    "schema": "public"
+  },
+  {
+    "acl": "{postgres=X/postgres,service_role=X/postgres}",
+    "oid": "18560",
+    "args": "",
+    "name": "commerce_guard",
+    "owner": "postgres",
+    "schema": "app_internal"
+  },
+  {
+    "acl": "{postgres=X/postgres,service_role=X/postgres}",
+    "oid": "18476",
+    "args": "p_business uuid",
+    "name": "ensure_commerce",
+    "owner": "postgres",
+    "schema": "app_internal"
+  },
+  {
+    "acl": "{postgres=X/postgres,service_role=X/postgres}",
+    "oid": "18575",
+    "args": "",
+    "name": "business_alias_guard",
+    "owner": "postgres",
+    "schema": "app_internal"
+  },
+  {
+    "acl": "{postgres=X/postgres,service_role=X/postgres}",
+    "oid": "18577",
+    "args": "p_identifier text",
+    "name": "resolve_business_access",
+    "owner": "postgres",
+    "schema": "public"
+  },
+  {
+    "acl": "{postgres=X/postgres,service_role=X/postgres}",
+    "oid": "18578",
+    "args": "p_business uuid, p_name text, p_alias text, p_active boolean",
+    "name": "update_business_access",
+    "owner": "postgres",
+    "schema": "public"
+  },
+  {
+    "acl": "{postgres=X/postgres,service_role=X/postgres}",
+    "oid": "18598",
+    "args": "p_business uuid",
+    "name": "business_delete_preview",
+    "owner": "postgres",
+    "schema": "public"
+  },
+  {
+    "acl": "{postgres=X/postgres,service_role=X/postgres}",
+    "oid": "18599",
+    "args": "p_business uuid, p_actor uuid, p_confirmation text",
+    "name": "delete_empty_business",
+    "owner": "postgres",
+    "schema": "public"
+  },
+  {
+    "acl": "{postgres=X/postgres,service_role=X/postgres}",
+    "oid": "18601",
+    "args": "p_business uuid",
+    "name": "ensure_commerce_v2",
+    "owner": "postgres",
+    "schema": "app_internal"
+  }
+]

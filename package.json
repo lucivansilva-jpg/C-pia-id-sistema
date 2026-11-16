@@ -1,0 +1,27 @@
+{
+  "name": "id-sistema-ai-studio",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node scripts/preview.mjs",
+    "start": "node scripts/preview.mjs",
+    "build": "node scripts/build-firebase-sdk.mjs && node scripts/check-package.mjs",
+    "check": "node scripts/check-package.mjs",
+    "lint": "node scripts/check-package.mjs",
+    "test:firebase:simulator": "node checks/firebase-api-functional.test.mjs",
+    "test:firebase:rules": "npx --yes firebase-tools@15.36.0 emulators:exec --only firestore --project demo-idsistema-test --config firebase.emulator.json \"node firestore.rules.test.ts\""
+  },
+  "dependencies": {
+    "@firebase/eslint-plugin-security-rules": "^0.0.2",
+    "esbuild": "^0.28.2",
+    "eslint": "^10.15.0",
+    "firebase": "^13.3.0"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^6.0.0"
+  }
+}

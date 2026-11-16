@@ -1,0 +1,41 @@
+[
+  {
+    "id": "3d18f555-611f-4dd1-a8b8-e519e42f26a2",
+    "slug": "auth-access",
+    "name": "auth-access",
+    "status": "ACTIVE",
+    "version": 7,
+    "created_at": 1794604546192,
+    "updated_at": 1794626342098,
+    "verify_jwt": false,
+    "import_map": false,
+    "entrypoint_path": "file:///tmp/user_fn_theshzemzvhwmulcvdgb_3d18f555-611f-4dd1-a8b8-e519e42f26a2_7/source/index.js",
+    "ezbr_sha256": "4b12a6696f430c3a8959167f42eebd7ebb6814ac75ef10ed13b71f399201cf08"
+  },
+  {
+    "id": "6d1d8043-0aa0-4a10-a4e7-267ed5a9bb7b",
+    "slug": "support-access",
+    "name": "support-access",
+    "status": "ACTIVE",
+    "version": 2,
+    "created_at": 1794658865906,
+    "updated_at": 1794671070608,
+    "verify_jwt": false,
+    "import_map": false,
+    "entrypoint_path": "file:///tmp/user_fn_theshzemzvhwmulcvdgb_6d1d8043-0aa0-4a10-a4e7-267ed5a9bb7b_2/source/index.js",
+    "ezbr_sha256": "4744c4ae9b744d73f2c0ae70096d4ce59bf42c5b8b384460580af170b3b2c8ad"
+  },
+  {
+    "id": "9f74850a-2b74-4282-bd9a-7fdc7d678e82",
+    "slug": "commerce-access",
+    "name": "commerce-access",
+    "status": "ACTIVE",
+    "version": 3,
+    "created_at": 1794667464113,
+    "updated_at": 1794671082740,
+    "verify_jwt": false,
+    "import_map": false,
+    "entrypoint_path": "file:///tmp/user_fn_theshzemzvhwmulcvdgb_9f74850a-2b74-4282-bd9a-7fdc7d678e82_3/source/index.js",
+    "ezbr_sha256": "db7342434075d11ab40f8c143a61ed41bc022a5190b4b6d3f5a6d07082f98c9c"
+  }
+]

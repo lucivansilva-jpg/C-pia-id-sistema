@@ -1,0 +1,1 @@
+{"name":"mesa-caixa","version":"0.2.0","private":true,"type":"module","scripts":{"build":"node scripts/build.mjs","test":"node --test tests/*.test.mjs"},"devDependencies":{"drizzle-kit":"0.31.11","drizzle-orm":"0.45.4"}}

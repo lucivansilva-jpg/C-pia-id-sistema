@@ -1,0 +1,22 @@
+[
+  {
+    "id": "d9c47d63-ff10-4ff6-b4c9-2a2b3e71ace9",
+    "code": "6d5d298b8aed",
+    "name": "Nb criacoes",
+    "active": true,
+    "created_at": "2026-11-14T02:39:27.975843+00:00",
+    "deleted_at": null,
+    "access_alias": null,
+    "owner_user_id": "eb0fe0dc-2a94-4592-9a0d-bf6468fb4345"
+  },
+  {
+    "id": "158cd9f8-6795-45bb-a83e-c3e98d19255b",
+    "code": "0a53012bd22d",
+    "name": "nbcriacoes",
+    "active": true,
+    "created_at": "2026-11-14T02:42:50.568161+00:00",
+    "deleted_at": null,
+    "access_alias": null,
+    "owner_user_id": "1df44fd8-9ace-47c0-b25f-887d9fc7cc53"
+  }
+]

@@ -1,0 +1,1 @@
+O bucket erp-images existe e é público. Foram encontrados 0 objetos nesta exportação. Não há arquivos físicos a baixar do Supabase neste momento. As fotos fictícias e a logomarca da demonstração estão em web/demo/assets.

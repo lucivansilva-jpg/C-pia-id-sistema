@@ -1,0 +1,44 @@
+[
+  {
+    "name": "Administrador / proprietário",
+    "role": "admin",
+    "version": 1,
+    "business_id": "d9c47d63-ff10-4ff6-b4c9-2a2b3e71ace9",
+    "permissions": {}
+  },
+  {
+    "name": "Caixa / responsável pela operação",
+    "role": "cashier",
+    "version": 1,
+    "business_id": "d9c47d63-ff10-4ff6-b4c9-2a2b3e71ace9",
+    "permissions": {}
+  },
+  {
+    "name": "Garçom / atendimento",
+    "role": "waiter",
+    "version": 1,
+    "business_id": "d9c47d63-ff10-4ff6-b4c9-2a2b3e71ace9",
+    "permissions": {}
+  },
+  {
+    "name": "Administrador / proprietário",
+    "role": "admin",
+    "version": 1,
+    "business_id": "158cd9f8-6795-45bb-a83e-c3e98d19255b",
+    "permissions": {}
+  },
+  {
+    "name": "Caixa / responsável pela operação",
+    "role": "cashier",
+    "version": 1,
+    "business_id": "158cd9f8-6795-45bb-a83e-c3e98d19255b",
+    "permissions": {}
+  },
+  {
+    "name": "Garçom / atendimento",
+    "role": "waiter",
+    "version": 1,
+    "business_id": "158cd9f8-6795-45bb-a83e-c3e98d19255b",
+    "permissions": {}
+  }
+]

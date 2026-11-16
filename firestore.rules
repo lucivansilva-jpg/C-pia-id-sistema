@@ -1,0 +1,1825 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global safety net: default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // Global Helpers
+    // -------------------------------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.matches('^[a-zA-Z0-9_\\-]{1,128}$');
+    }
+
+    function isValidOptionalId(val) {
+      return val == null || isValidId(val);
+    }
+
+    function isOptionalId(val) {
+      return val == null || isValidId(val);
+    }
+
+    function isNonEmptyString(val, minLen, maxLen) {
+      return val is string && val.size() >= minLen && val.size() <= maxLen;
+    }
+
+    function isOptionalString(val, maxLen) {
+      return val == null || (val is string && val.size() <= maxLen);
+    }
+
+    function isIntRange(val, minVal, maxVal) {
+      return val is int && val >= minVal && val <= maxVal;
+    }
+
+    function isOptionalIntRange(val, minVal, maxVal) {
+      return val == null || isIntRange(val, minVal, maxVal);
+    }
+
+    function isOptionalTimestamp(val) {
+      return val == null || val is timestamp;
+    }
+
+    function isListOfStrings(val, maxLen) {
+      return val is list && val.size() <= maxLen && (val.size() == 0 || (val[0] is string && val[0].size() <= 128));
+    }
+
+    function isListOfMaps(val, maxLen) {
+      return val is list && val.size() <= maxLen && (val.size() == 0 || val[0] is map);
+    }
+
+    function isPlatformAdminByToken() {
+      return isSignedIn()
+        && request.auth.token.get('email_verified', false) == true
+        && request.auth.token.get('email', '') == 'lucivan.silva@gmail.com';
+    }
+
+    function isPlatformAdmin() {
+      return isPlatformAdminByToken()
+        || (
+          isSignedIn()
+          && request.auth.token.get('email_verified', false) == true
+          && exists(/databases/$(database)/documents/platformAdmins/$(request.auth.uid))
+          && get(/databases/$(database)/documents/platformAdmins/$(request.auth.uid)).data.active == true
+        );
+    }
+
+    function businessPath(businessId) {
+      return /databases/$(database)/documents/businesses/$(businessId);
+    }
+
+    function settingsPath(businessId) {
+      return /databases/$(database)/documents/businesses/$(businessId)/settings/main;
+    }
+
+    function businessKind(businessId) {
+      return exists(settingsPath(businessId))
+        ? get(settingsPath(businessId)).data.get('businessKind', 'food')
+        : 'food';
+    }
+
+    function isRetail(businessId) {
+      return businessKind(businessId) == 'retail';
+    }
+
+    function hasModule(businessId, mod) {
+      let s = exists(settingsPath(businessId)) ? get(settingsPath(businessId)).data : {};
+      let mods = s.get('modules', null);
+      return mods == null
+        ? (mod == 'tables' ? !isRetail(businessId) : true)
+        : (mods.get(mod, false) == true && (mod != 'tables' || !isRetail(businessId)));
+    }
+
+    function memberPath(businessId, uid) {
+      return /databases/$(database)/documents/businesses/$(businessId)/members/$(uid);
+    }
+
+    function businessExists(businessId) {
+      return exists(businessPath(businessId));
+    }
+
+    function businessActive(businessId) {
+      let path = businessPath(businessId);
+      let data = get(path).data;
+      return exists(path) && data.active == true && data.deleted == false;
+    }
+
+    function memberExists(businessId, uid) {
+      return exists(memberPath(businessId, uid));
+    }
+
+    function memberData(businessId) {
+      return get(memberPath(businessId, request.auth.uid)).data;
+    }
+
+    function isBusinessMember(businessId) {
+      let uid = request.auth.uid;
+      let path = memberPath(businessId, uid);
+      return isSignedIn()
+        && isValidId(businessId)
+        && businessActive(businessId)
+        && exists(path)
+        && get(path).data.active == true;
+    }
+
+    function isTenantAdmin(businessId) {
+      return isPlatformAdmin()
+        || (isBusinessMember(businessId) && memberData(businessId).role == 'admin');
+    }
+
+    function isTenantCashierOrAdmin(businessId) {
+      return isPlatformAdmin()
+        || (isBusinessMember(businessId) && memberData(businessId).role in ['admin', 'cashier']);
+    }
+
+    function isTenantMemberOrPlatform(businessId) {
+      return isPlatformAdmin() || isBusinessMember(businessId);
+    }
+
+    function profilePath(businessId, role) {
+      return /databases/$(database)/documents/businesses/$(businessId)/profiles/$(role);
+    }
+
+    function lockDocPath(businessId, lockId) {
+      return /databases/$(database)/documents/businesses/$(businessId)/locks/$(lockId);
+    }
+
+    function cashSessionDocPath(businessId, sessionId) {
+      return /databases/$(database)/documents/businesses/$(businessId)/cashSessions/$(sessionId);
+    }
+
+    function ledgerDocPath(businessId, entryId) {
+      return /databases/$(database)/documents/businesses/$(businessId)/ledger/$(entryId);
+    }
+
+    function orderDocPath(businessId, orderId) {
+      return /databases/$(database)/documents/businesses/$(businessId)/orders/$(orderId);
+    }
+
+    function checkOpenSessionTick(beforeValue, afterValue) {
+      let csBefore = beforeValue;
+      let csAfter = afterValue;
+      return csBefore.state == 'open'
+        && csAfter.state == 'open'
+        && csAfter.get('version', 1) == csBefore.get('version', 1) + 1;
+    }
+
+    function checkSaleLedgerAfter(businessId, entry, orderId, ledgerId, expectedDelta, requireExactAmount) {
+      let led = entry;
+      return led.id == ledgerId
+        && led.kind == 'sale'
+        && led.get('orderId', null) == orderId
+        && led.actorId == request.auth.uid
+        && led.amountCents > 0
+        && (!requireExactAmount || led.amountCents == expectedDelta)
+        && led.get('sessionId', null) != null
+        && checkOpenSessionTick(
+          get(cashSessionDocPath(businessId, led.sessionId)).data,
+          getAfter(cashSessionDocPath(businessId, led.sessionId)).data
+        );
+    }
+
+    function hasAtomicSaleLedger(businessId, orderId, ledgerId, expectedDelta, requireExactAmount) {
+      let path = ledgerDocPath(businessId, ledgerId);
+      let led = getAfter(path).data;
+      let sessionPath = cashSessionDocPath(businessId, led.sessionId);
+      let before = get(sessionPath).data;
+      let after = getAfter(sessionPath).data;
+      return isValidId(ledgerId) && !exists(path)
+        && led.id == ledgerId && led.kind == 'sale' && led.orderId == orderId
+        && led.actorId == request.auth.uid && led.amountCents > 0
+        && (!requireExactAmount || led.amountCents == expectedDelta)
+        && before.state == 'open' && after.state == 'open'
+        && after.get('version', 1) == before.get('version', 1) + 1;
+    }
+
+    function checkSaleOrderAfter(orderValue, entryId, amountCents) {
+      let ordAfter = orderValue;
+      return ordAfter.get('paidCents', 0) >= amountCents
+        && (ordAfter.get('exchangeFromOrderId', null) != null || ordAfter.get('lastLedgerId', null) == entryId);
+    }
+
+    function profilePerms(businessId, role) {
+      return exists(profilePath(businessId, role))
+        ? get(profilePath(businessId, role)).data.get('permissions', {})
+        : {};
+    }
+
+    function roleBaseHas(role, perm) {
+      return role == 'admin'
+        || (role == 'waiter' && perm.matches('^(profile\\.read|settings\\.read|catalog\\.read|tables\\.read|orders\\.read|orders\\.create|orders\\.update|orders\\.deliver|favorites\\.manage)$'))
+        || (role == 'cashier' && perm.matches('^(profile\\.read|settings\\.read|catalog\\.read|products\\.manage|tables\\.read|tables\\.manage|orders\\.read|orders\\.print|orders\\.shared|orders\\.create|orders\\.update|orders\\.deliver|orders\\.cancel|drafts\\.manage|favorites\\.manage|cash\\.access|cash\\.open|cash\\.close|cash\\.movements|payments\\.receive|payments\\.refund|discounts\\.authorize|expenses\\.create)$'));
+    }
+
+    function roleAllowsPerm(role, perm) {
+      return role == 'admin'
+        || (
+          role in ['cashier', 'waiter']
+          && !(perm.matches('^(settings\\.manage|employees\\.manage|finance\\.view|finance\\.manage|reports\\.view)$'))
+          && (
+            role == 'cashier'
+            || !(perm.matches('^(cash\\.access|cash\\.open|cash\\.close|cash\\.movements|payments\\.receive|payments\\.refund|expenses\\.create|products\\.costs|orders\\.print|discounts\\.authorize)$'))
+          )
+        );
+    }
+
+    function permissionFlag(m, profile, perm) {
+      let overrides = m.get('permissions', {});
+      return roleAllowsPerm(m.role, perm)
+        && (perm in overrides ? overrides[perm] == true
+            : (perm in profile ? profile[perm] == true : roleBaseHas(m.role, perm)));
+    }
+
+    function resolvedMemberPerm(m, profile, perm) {
+      return m.role == 'admin'
+        || (permissionFlag(m, profile, perm)
+          && (!(perm.matches('^(cash\\.open|cash\\.close|cash\\.movements|payments\\.receive|payments\\.refund|expenses\\.create)$'))
+            || permissionFlag(m, profile, 'cash.access'))
+          && (perm != 'expenses.create' || permissionFlag(m, profile, 'cash.movements')));
+    }
+
+    function memberHasPerm(businessId, member, perm) {
+      let m = member;
+      let profile = profilePerms(businessId, m.role);
+      return resolvedMemberPerm(m, profile, perm);
+    }
+
+    function tenantMemberPerm(businessId, perm) {
+      let business = get(businessPath(businessId)).data;
+      let path = memberPath(businessId, request.auth.uid);
+      let member = exists(path) ? get(path).data : {'role': 'none', 'active': false};
+      let profile = profilePerms(businessId, member.role);
+      return isSignedIn() && isValidId(businessId)
+        && business.active == true && business.deleted == false
+        && member.active == true && resolvedMemberPerm(member, profile, perm);
+    }
+
+    function hasTenantPerm(businessId, perm) {
+      return isPlatformAdmin() || tenantMemberPerm(businessId, perm);
+    }
+
+    function tenantPaymentScope(businessId, order) {
+      let business = get(businessPath(businessId)).data;
+      let member = memberData(businessId);
+      let profile = profilePerms(businessId, member.role);
+      return business.active == true && business.deleted == false && member.active == true
+        && resolvedMemberPerm(member, profile, 'payments.receive')
+        && (order.actorId == request.auth.uid || resolvedMemberPerm(member, profile, 'orders.shared'));
+    }
+
+    function canAccessOrderDoc(businessId, orderData) {
+      return (isSignedIn() && orderData.actorId == request.auth.uid) || hasTenantPerm(businessId, 'orders.shared');
+    }
+
+    // -------------------------------------------------------------------------
+    // Entity Validation Helpers ("Anti-Update-Gap")
+    // -------------------------------------------------------------------------
+    function isValidPlatformAdmin(value, uid) {
+      let data = value;
+      return data.keys().hasAll(['uid', 'name', 'email', 'active', 'createdAt'])
+        && data.keys().hasOnly(['uid', 'name', 'email', 'active', 'createdAt'])
+        && isValidId(data.uid) && data.uid == uid
+        && isNonEmptyString(data.name, 1, 100)
+        && isNonEmptyString(data.email, 5, 254)
+        && data.active is bool
+        && data.createdAt is timestamp;
+    }
+
+    function isValidBusinessAccess(value, identifier) {
+      let data = value;
+      return data.keys().hasAll(['identifier', 'businessId', 'code', 'kind', 'active', 'updatedAt'])
+        && data.keys().hasOnly(['identifier', 'businessId', 'code', 'kind', 'active', 'updatedAt'])
+        && isValidId(data.identifier) && data.identifier == identifier
+        && isValidId(data.businessId)
+        && data.code is string && data.code.size() >= 4 && data.code.size() <= 32 && data.code.matches('^[a-z0-9\\-]+$')
+        && data.kind in ['code', 'alias', 'cnpj']
+        && data.active is bool
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUserBusiness(value, uid) {
+      let data = value;
+      return data.keys().hasAll(['uid', 'businessId', 'username', 'role', 'active', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'businessId', 'username', 'role', 'active', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid) && data.uid == uid
+        && isValidId(data.businessId)
+        && data.username is string && data.username.size() >= 3 && data.username.size() <= 40 && data.username.matches('^[a-z0-9][a-z0-9._-]{2,39}$')
+        && data.role in ['admin', 'cashier', 'waiter']
+        && data.active is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSupportSession(value, sessionId) {
+      let data = value;
+      return data.keys().hasAll(['id', 'businessId', 'supportUid', 'purpose', 'customerRequested', 'writeEnabled', 'active', 'expiresAt', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'businessId', 'supportUid', 'purpose', 'customerRequested', 'writeEnabled', 'writeReason', 'active', 'expiresAt', 'closedAt', 'createdAt', 'updatedAt'])
+        && isValidId(data.id) && data.id == sessionId
+        && isValidId(data.businessId)
+        && isValidId(data.supportUid) && data.supportUid == request.auth.uid
+        && isNonEmptyString(data.purpose, 5, 500)
+        && data.customerRequested is bool
+        && data.writeEnabled is bool
+        && isOptionalString(data.get('writeReason', null), 500)
+        && data.active is bool
+        && data.expiresAt is timestamp
+        && isOptionalTimestamp(data.get('closedAt', null))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBusiness(value, businessId) {
+      let data = value;
+      return data.keys().hasAll(['id', 'name', 'code', 'active', 'deleted', 'ownerUid', 'ownerName', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'code', 'accessAlias', 'active', 'deleted', 'ownerUid', 'ownerName', 'businessKind', 'modules', 'userLimit', 'activeUserCount', 'lastSeenAt', 'openTicketCount', 'unreadTicketCount', 'createdAt', 'updatedAt'])
+        && isValidId(data.id) && data.id == businessId
+        && isNonEmptyString(data.name, 1, 100)
+        && data.code is string && data.code.size() >= 4 && data.code.size() <= 32 && data.code.matches('^[a-z0-9\\-]+$')
+        && isOptionalString(data.get('accessAlias', null), 80)
+        && data.active is bool
+        && data.deleted is bool
+        && isValidId(data.ownerUid)
+        && isNonEmptyString(data.ownerName, 1, 100)
+        && (data.get('businessKind', null) == null || data.businessKind in ['food', 'retail'])
+        && (data.get('modules', null) == null || data.modules is map)
+        && isOptionalIntRange(data.get('userLimit', null), 1, 1000000)
+        && isOptionalIntRange(data.get('activeUserCount', null), 0, 1000000)
+        && isOptionalTimestamp(data.get('lastSeenAt', null))
+        && isOptionalIntRange(data.get('openTicketCount', null), 0, 100000)
+        && isOptionalIntRange(data.get('unreadTicketCount', null), 0, 100000)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidMember(value, businessId, uid) {
+      let data = value;
+      return data.keys().hasAll(['uid', 'businessId', 'name', 'username', 'role', 'permissions', 'active', 'mustChangePassword', 'isOwner', 'version', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'businessId', 'name', 'username', 'role', 'permissions', 'active', 'mustChangePassword', 'isOwner', 'version', 'lastSeenAt', 'createdAt', 'updatedAt'])
+        && isValidId(data.uid) && data.uid == uid
+        && isValidId(data.businessId) && data.businessId == businessId
+        && isNonEmptyString(data.name, 1, 100)
+        && data.username is string && data.username.size() >= 3 && data.username.size() <= 40 && data.username.matches('^[a-z0-9][a-z0-9._-]{2,39}$')
+        && data.role in ['admin', 'cashier', 'waiter']
+        && data.permissions is map && data.permissions.size() <= 40
+        && data.active is bool
+        && data.mustChangePassword is bool
+        && data.isOwner is bool
+        && isIntRange(data.version, 1, 1000000000)
+        && isOptionalTimestamp(data.get('lastSeenAt', null))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidRoleProfile(value, role) {
+      let data = value;
+      return data.keys().hasAll(['role', 'name', 'permissions', 'version', 'updatedAt'])
+        && data.keys().hasOnly(['role', 'name', 'permissions', 'version', 'updatedBy', 'updatedAt'])
+        && data.role in ['admin', 'cashier', 'waiter'] && data.role == role
+        && isNonEmptyString(data.name, 1, 100)
+        && data.permissions is map && data.permissions.size() <= 40
+        && isIntRange(data.version, 1, 1000000000)
+        && isOptionalId(data.get('updatedBy', null))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSettings(value) {
+      let data = value;
+      return data.keys().hasAll(['name', 'mode', 'paper', 'businessKind', 'blindClose', 'updatedAt'])
+        && data.keys().hasOnly(['name', 'mode', 'paper', 'businessKind', 'modules', 'userLimit', 'activeUserCount', 'legalName', 'cnpj', 'address', 'phone', 'receiptMessage', 'blindClose', 'logoKey', 'themeColor', 'updatedAt'])
+        && isNonEmptyString(data.name, 1, 80)
+        && data.mode in ['essential', 'complete']
+        && data.paper in [58, 80]
+        && data.businessKind in ['food', 'retail']
+        && (data.get('modules', null) == null || data.modules is map)
+        && isOptionalIntRange(data.get('userLimit', null), 1, 1000000)
+        && isOptionalIntRange(data.get('activeUserCount', null), 0, 1000000)
+        && isOptionalString(data.get('legalName', null), 150)
+        && isOptionalString(data.get('cnpj', null), 14)
+        && isOptionalString(data.get('address', null), 300)
+        && isOptionalString(data.get('phone', null), 30)
+        && isOptionalString(data.get('receiptMessage', null), 200)
+        && data.blindClose is bool
+        && isOptionalId(data.get('logoKey', null))
+        && (data.get('themeColor', null) == null || (data.themeColor is string && data.themeColor.size() == 7 && data.themeColor.matches('^#[a-fA-F0-9]{6}$')))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPublicSettings(value) {
+      let data = value;
+      return data.keys().hasAll(['name', 'active', 'updatedAt'])
+        && data.keys().hasOnly(['name', 'address', 'phone', 'logoDataUrl', 'themeColor', 'active', 'updatedAt'])
+        && isNonEmptyString(data.name, 1, 80)
+        && isOptionalString(data.get('address', null), 300)
+        && isOptionalString(data.get('phone', null), 30)
+        && isOptionalString(data.get('logoDataUrl', null), 450000)
+        && (data.get('themeColor', null) == null || (data.themeColor is string && data.themeColor.size() == 7 && data.themeColor.matches('^#[a-fA-F0-9]{6}$')))
+        && data.active is bool
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPublicProduct(value, productId) {
+      let data = value;
+      return data.keys().hasAll(['id', 'name', 'priceCents', 'available', 'visible', 'options', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'description', 'category', 'priceCents', 'available', 'visible', 'options', 'imageDataUrl', 'updatedAt'])
+        && isValidId(data.id) && data.id == productId
+        && isNonEmptyString(data.name, 1, 100)
+        && isOptionalString(data.get('description', null), 500)
+        && isOptionalString(data.get('category', null), 60)
+        && isIntRange(data.priceCents, 0, 100000000)
+        && data.available is bool
+        && data.visible is bool
+        && isListOfMaps(data.options, 8)
+        && isOptionalString(data.get('imageDataUrl', null), 450000)
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidProduct(value, productId) {
+      let data = value;
+      return data.keys().hasAll(['id', 'code', 'name', 'priceCents', 'active', 'available', 'visible', 'options', 'addons', 'quickNotes', 'saleUnit', 'stockMode', 'trackStock', 'costMode', 'version', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'code', 'name', 'description', 'category', 'priceCents', 'imageKey', 'active', 'available', 'visible', 'options', 'addons', 'quickNotes', 'barcode', 'saleUnit', 'packaging', 'stockMode', 'finishedInventoryId', 'trackStock', 'costMode', 'version', 'createdAt', 'updatedAt'])
+        && isValidId(data.id) && data.id == productId
+        && isIntRange(data.code, 1, 100000000)
+        && isNonEmptyString(data.name, 1, 100)
+        && isOptionalString(data.get('description', null), 500)
+        && isOptionalString(data.get('category', null), 60)
+        && isIntRange(data.priceCents, 0, 100000000)
+        && isOptionalId(data.get('imageKey', null))
+        && data.active is bool
+        && data.available is bool
+        && data.visible is bool
+        && isListOfMaps(data.options, 8)
+        && isListOfMaps(data.addons, 30)
+        && isListOfStrings(data.quickNotes, 20)
+        && isOptionalString(data.get('barcode', null), 64)
+        && data.saleUnit in ['un', 'pct', 'lata', 'garrafa', 'frasco', 'pote', 'par']
+        && isOptionalString(data.get('packaging', null), 80)
+        && data.stockMode in ['none', 'unit', 'recipe']
+        && isOptionalId(data.get('finishedInventoryId', null))
+        && data.trackStock is bool
+        && data.costMode in ['direct', 'recipe']
+        && isIntRange(data.version, 1, 1000000000)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPrivateCost(value) {
+      let data = value;
+      return data.keys().hasAll(['costCents', 'updatedAt'])
+        && data.keys().hasOnly(['costCents', 'addonCosts', 'updatedAt'])
+        && (data.costCents == null || isIntRange(data.costCents, 0, 100000000))
+        && (data.get('addonCosts', null) == null || (data.addonCosts is map && data.addonCosts.size() <= 30))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidMedia(value, mediaId) {
+      let data = value;
+      return data.keys().hasAll(['key', 'mime', 'size', 'dataUrl', 'createdBy', 'createdAt'])
+        && data.keys().hasOnly(['key', 'mime', 'size', 'dataUrl', 'createdBy', 'createdAt'])
+        && isValidId(data.key) && data.key == mediaId
+        && data.mime in ['image/jpeg', 'image/png', 'image/webp']
+        && isIntRange(data.size, 1, 350000)
+        && isNonEmptyString(data.dataUrl, 10, 450000)
+        && isValidId(data.createdBy)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidTable(value, tableId) {
+      let data = value;
+      return data.keys().hasAll(['id', 'number', 'active', 'createdAt'])
+        && data.keys().hasOnly(['id', 'number', 'seats', 'active', 'createdAt'])
+        && isValidId(data.id) && data.id == tableId
+        && isIntRange(data.number, 1, 9999)
+        && isOptionalIntRange(data.get('seats', null), 1, 100)
+        && data.active is bool
+        && data.createdAt is timestamp;
+    }
+
+    function isValidOrder(value, orderId) {
+      let data = value;
+      return data.keys().hasOnly(['id', 'number', 'requestKey', 'tableNumber', 'state', 'fulfillment', 'items', 'totalCents', 'discountCents', 'discountReason', 'authorizedBy', 'actorId', 'attendantName', 'customerId', 'customerName', 'checkoutWaiting', 'checkoutHeldAt', 'checkoutHeldBy', 'exchangeFromOrderId', 'paidCents', 'lastLedgerId', 'refundCents', 'version', 'createdAt', 'updatedAt', 'closedAt'])
+        && isValidId(data.id) && data.id == orderId
+        && isIntRange(data.number, 1, 1000000000)
+        && isNonEmptyString(data.requestKey, 12, 80) && data.requestKey.matches('^[a-zA-Z0-9_\\-]+$')
+        && isOptionalIntRange(data.get('tableNumber', null), 1, 9999)
+        && data.state in ['open', 'closed', 'cancelled']
+        && data.fulfillment in ['pending', 'delivered']
+        && isListOfMaps(data.items, 100)
+        && isIntRange(data.totalCents, 0, 100000000)
+        && isIntRange(data.discountCents, 0, 100000000)
+        && isOptionalString(data.get('discountReason', null), 200)
+        && isOptionalId(data.get('authorizedBy', null))
+        && isValidId(data.actorId)
+        && isNonEmptyString(data.attendantName, 1, 100)
+        && isOptionalId(data.get('customerId', null))
+        && isOptionalString(data.get('customerName', null), 100)
+        && data.checkoutWaiting is bool
+        && isOptionalTimestamp(data.get('checkoutHeldAt', null))
+        && isOptionalId(data.get('checkoutHeldBy', null))
+        && isOptionalId(data.get('exchangeFromOrderId', null))
+        && isOptionalIntRange(data.get('paidCents', null), 0, 100000000)
+        && isOptionalId(data.get('lastLedgerId', null))
+        && isOptionalIntRange(data.get('refundCents', null), 0, 100000000)
+        && data.get('paidCents', 0) <= data.totalCents
+        && isIntRange(data.version, 1, 1000000000)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && isOptionalTimestamp(data.get('closedAt', null));
+    }
+
+    function isValidDraft(value, draftId) {
+      let data = value;
+      return data.keys().hasAll(['id', 'requestKey', 'ownerId', 'title', 'items', 'state', 'version', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'requestKey', 'ownerId', 'title', 'items', 'state', 'convertedOrderId', 'version', 'createdAt', 'updatedAt'])
+        && isValidId(data.id) && data.id == draftId
+        && isNonEmptyString(data.requestKey, 12, 80) && data.requestKey.matches('^[a-zA-Z0-9_\\-]+$')
+        && isValidId(data.ownerId)
+        && isNonEmptyString(data.title, 1, 80)
+        && isListOfMaps(data.items, 100)
+        && data.state in ['waiting', 'converted', 'discarded']
+        && isOptionalId(data.get('convertedOrderId', null))
+        && isIntRange(data.version, 1, 1000000000)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFavorites(value, uid) {
+      let data = value;
+      return data.keys().hasAll(['uid', 'productIds', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'productIds', 'updatedAt'])
+        && isValidId(data.uid) && data.uid == uid
+        && isListOfStrings(data.productIds, 500)
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCashSession(value, sessionId) {
+      let data = value;
+      return data.keys().hasAll(['id', 'openingCents', 'state', 'actorId', 'openedAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'openingCents', 'countedCents', 'expectedCents', 'differenceCents', 'countedMethods', 'expectedMethods', 'differenceMethods', 'cashBalanceCents', 'methodTotals', 'version', 'state', 'actorId', 'openedAt', 'closedAt', 'updatedAt'])
+        && isValidId(data.id) && data.id == sessionId
+        && isIntRange(data.openingCents, 0, 100000000)
+        && isOptionalIntRange(data.get('countedCents', null), 0, 100000000)
+        && isOptionalIntRange(data.get('expectedCents', null), -100000000, 100000000)
+        && isOptionalIntRange(data.get('differenceCents', null), -100000000, 100000000)
+        && (data.get('countedMethods', null) == null || data.countedMethods is map)
+        && (data.get('expectedMethods', null) == null || data.expectedMethods is map)
+        && (data.get('differenceMethods', null) == null || data.differenceMethods is map)
+        && isOptionalIntRange(data.get('cashBalanceCents', null), 0, 100000000)
+        && (data.get('methodTotals', null) == null || (data.methodTotals is map && data.methodTotals.size() <= 10))
+        && isOptionalIntRange(data.get('version', null), 1, 1000000000)
+        && data.state in ['open', 'closed']
+        && isValidId(data.actorId)
+        && data.openedAt is timestamp
+        && isOptionalTimestamp(data.get('closedAt', null))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidLedgerEntry(value, entryId) {
+      let data = value;
+      return data.keys().hasOnly(['id', 'requestKey', 'sessionId', 'orderId', 'accountId', 'reversalOf', 'kind', 'method', 'amountCents', 'tenderedCents', 'refundedCents', 'description', 'reason', 'category', 'financeAccount', 'actorId', 'authorizedBy', 'reconciledAt', 'externalReference', 'reconciledBy', 'createdAt', 'updatedAt'])
+        && isValidId(data.id) && data.id == entryId
+        && isNonEmptyString(data.requestKey, 8, 128)
+        && isOptionalId(data.get('sessionId', null))
+        && isOptionalId(data.get('orderId', null))
+        && isOptionalId(data.get('accountId', null))
+        && isOptionalId(data.get('reversalOf', null))
+        && data.kind in ['sale', 'refund', 'supply', 'withdrawal', 'expense', 'payable', 'receivable', 'fee']
+        && data.method in ['cash', 'pix', 'credit', 'debit', 'card', 'bank', 'exchange_credit']
+        && isIntRange(data.amountCents, -100000000, 100000000)
+        && isOptionalIntRange(data.get('tenderedCents', null), 0, 100000000)
+        && isOptionalIntRange(data.get('refundedCents', null), 0, 100000000)
+        && isNonEmptyString(data.description, 1, 200)
+        && isOptionalString(data.get('reason', null), 200)
+        && isNonEmptyString(data.category, 1, 80)
+        && data.financeAccount in ['drawer', 'bank', 'internal']
+        && isValidId(data.actorId)
+        && isOptionalId(data.get('authorizedBy', null))
+        && isOptionalTimestamp(data.get('reconciledAt', null))
+        && isOptionalString(data.get('externalReference', null), 120)
+        && isOptionalId(data.get('reconciledBy', null))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFinancialAccount(value, accountId) {
+      let data = value;
+      return data.keys().hasAll(['id', 'requestKey', 'kind', 'title', 'amountCents', 'dueDate', 'state', 'category', 'actorId', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'requestKey', 'kind', 'title', 'amountCents', 'dueDate', 'state', 'category', 'recurrence', 'recurrenceParentId', 'actorId', 'createdAt', 'settledAt', 'updatedAt'])
+        && isValidId(data.id) && data.id == accountId
+        && isNonEmptyString(data.requestKey, 8, 128)
+        && data.kind in ['payable', 'receivable']
+        && isNonEmptyString(data.title, 1, 200)
+        && isIntRange(data.amountCents, 1, 100000000)
+        && data.dueDate is string && data.dueDate.size() == 10 && data.dueDate.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && data.state in ['pending', 'settled']
+        && isNonEmptyString(data.category, 1, 80)
+        && (data.get('recurrence', null) == null || data.recurrence in ['weekly', 'monthly'])
+        && isOptionalId(data.get('recurrenceParentId', null))
+        && isValidId(data.actorId)
+        && data.createdAt is timestamp
+        && isOptionalTimestamp(data.get('settledAt', null))
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCustomer(value, customerId) {
+      let data = value;
+      return data.keys().hasAll(['id', 'name', 'active', 'version', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'phone', 'email', 'document', 'notes', 'active', 'version', 'createdAt', 'updatedAt'])
+        && isValidId(data.id) && data.id == customerId
+        && isNonEmptyString(data.name, 1, 100)
+        && isOptionalString(data.get('phone', null), 30)
+        && isOptionalString(data.get('email', null), 120)
+        && isOptionalString(data.get('document', null), 14)
+        && isOptionalString(data.get('notes', null), 500)
+        && data.active is bool
+        && isIntRange(data.version, 1, 1000000000)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSupplier(value, supplierId) {
+      let data = value;
+      return data.keys().hasAll(['id', 'name', 'active', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'phone', 'document', 'notes', 'active', 'createdAt', 'updatedAt'])
+        && isValidId(data.id) && data.id == supplierId
+        && isNonEmptyString(data.name, 1, 100)
+        && isOptionalString(data.get('phone', null), 30)
+        && isOptionalString(data.get('document', null), 30)
+        && isOptionalString(data.get('notes', null), 500)
+        && data.active is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidInventoryItem(value, itemId) {
+      let data = value;
+      return data.keys().hasAll(['id', 'name', 'unit', 'minimumMilli', 'active', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'unit', 'minimumMilli', 'unitCostMicro', 'active', 'createdAt', 'updatedAt'])
+        && isValidId(data.id) && data.id == itemId
+        && isNonEmptyString(data.name, 1, 100)
+        && data.unit in ['g', 'ml', 'un']
+        && isIntRange(data.minimumMilli, 0, 1000000000000)
+        && isOptionalIntRange(data.get('unitCostMicro', null), 0, 1000000000000)
+        && data.active is bool
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidInventoryStock(value, itemId) {
+      let data = value;
+      return data.keys().hasAll(['itemId', 'balanceMilli', 'updatedAt'])
+        && data.keys().hasOnly(['itemId', 'balanceMilli', 'updatedAt'])
+        && isValidId(data.itemId) && data.itemId == itemId
+        && isIntRange(data.balanceMilli, 0, 1000000000000)
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidInventoryMove(value, moveId) {
+      let data = value;
+      return data.keys().hasAll(['id', 'requestKey', 'itemId', 'quantityMilli', 'kind', 'reason', 'actorId', 'createdAt'])
+        && data.keys().hasOnly(['id', 'requestKey', 'itemId', 'quantityMilli', 'kind', 'sourceId', 'reason', 'actorId', 'createdAt'])
+        && isValidId(data.id) && data.id == moveId
+        && isNonEmptyString(data.requestKey, 5, 128)
+        && isValidId(data.itemId)
+        && isIntRange(data.quantityMilli, -1000000000000, 1000000000000)
+        && data.quantityMilli != 0
+        && data.kind in ['entry', 'loss', 'count', 'purchase', 'sale', 'return']
+        && isOptionalId(data.get('sourceId', null))
+        && isNonEmptyString(data.reason, 1, 200)
+        && isValidId(data.actorId)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidRecipe(value, productId) {
+      let data = value;
+      return data.keys().hasAll(['productId', 'items', 'updatedAt'])
+        && data.keys().hasOnly(['productId', 'items', 'updatedAt'])
+        && isValidId(data.productId) && data.productId == productId
+        && isListOfMaps(data.items, 100)
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPurchase(value, purchaseId) {
+      let data = value;
+      return data.keys().hasAll(['id', 'requestKey', 'items', 'totalCents', 'dueDate', 'state', 'actorId', 'createdAt'])
+        && data.keys().hasOnly(['id', 'requestKey', 'supplierId', 'supplierName', 'items', 'totalCents', 'dueDate', 'state', 'actorId', 'createdAt', 'receivedAt'])
+        && isValidId(data.id) && data.id == purchaseId
+        && isNonEmptyString(data.requestKey, 8, 128)
+        && isOptionalId(data.get('supplierId', null))
+        && isOptionalString(data.get('supplierName', null), 100)
+        && isListOfMaps(data.items, 100)
+        && isIntRange(data.totalCents, 0, 100000000)
+        && data.dueDate is string && data.dueDate.size() == 10 && data.dueDate.matches('^\\d{4}-\\d{2}-\\d{2}$')
+        && data.state in ['draft', 'received']
+        && isValidId(data.actorId)
+        && data.createdAt is timestamp
+        && isOptionalTimestamp(data.get('receivedAt', null));
+    }
+
+    function isValidSaleReturn(value, returnId) {
+      let data = value;
+      return data.keys().hasAll(['id', 'requestKey', 'fingerprint', 'orderId', 'kind', 'items', 'lines', 'amountCents', 'restoredCostCents', 'unknownCostQuantity', 'originalClosedAt', 'actorId', 'reason', 'createdAt'])
+        && data.keys().hasOnly(['id', 'requestKey', 'fingerprint', 'orderId', 'kind', 'items', 'lines', 'amountCents', 'restoredCostCents', 'unknownCostQuantity', 'originalClosedAt', 'replacementOrderId', 'actorId', 'reason', 'createdAt'])
+        && isValidId(data.id) && data.id == returnId
+        && isNonEmptyString(data.requestKey, 8, 128)
+        && isNonEmptyString(data.fingerprint, 32, 128)
+        && isValidId(data.orderId)
+        && data.kind in ['return', 'exchange']
+        && isListOfMaps(data.items, 100)
+        && isListOfMaps(data.lines, 100)
+        && isIntRange(data.amountCents, 0, 100000000)
+        && isIntRange(data.restoredCostCents, 0, 100000000)
+        && isIntRange(data.unknownCostQuantity, 0, 1000000)
+        && data.originalClosedAt is timestamp
+        && isOptionalId(data.get('replacementOrderId', null))
+        && isValidId(data.actorId)
+        && isNonEmptyString(data.reason, 3, 200)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidAuditLog(value, auditId) {
+      let data = value;
+      return data.keys().hasAll(['id', 'actorId', 'action', 'entityId', 'createdAt'])
+        && data.keys().hasOnly(['id', 'actorId', 'action', 'entityId', 'details', 'createdAt'])
+        && isNonEmptyString(data.id, 1, 128) && data.id == auditId
+        && isValidId(data.actorId)
+        && isNonEmptyString(data.action, 1, 240)
+        && isNonEmptyString(data.entityId, 1, 128)
+        && (data.get('details', null) == null || data.details is map)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidCounter(value) {
+      let data = value;
+      return data.keys().hasAll(['value', 'updatedAt'])
+        && data.keys().hasOnly(['value', 'updatedAt'])
+        && isIntRange(data.value, 0, 1000000000)
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidIdempotency(value, keyId) {
+      let data = value;
+      return data.keys().hasAll(['key', 'kind', 'targetId', 'actorId', 'createdAt'])
+        && data.keys().hasOnly(['key', 'kind', 'fingerprint', 'targetId', 'actorId', 'result', 'createdAt'])
+        && isNonEmptyString(data.key, 1, 128) && data.key == keyId
+        && isNonEmptyString(data.kind, 1, 60)
+        && isOptionalString(data.get('fingerprint', null), 128)
+        && isNonEmptyString(data.targetId, 1, 128)
+        && isValidId(data.actorId)
+        && (data.get('result', null) == null || data.result is map)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidLock(value, lockId) {
+      let data = value;
+      return data.keys().hasAll(['id', 'kind', 'active', 'version', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'kind', 'resourceId', 'active', 'ownerId', 'orderNumber', 'attendantName', 'version', 'updatedAt'])
+        && isValidId(data.id) && data.id == lockId
+        && data.kind in ['cash_session', 'table']
+        && isOptionalId(data.get('resourceId', null))
+        && data.active is bool
+        && isOptionalId(data.get('ownerId', null))
+        && isOptionalIntRange(data.get('orderNumber', null), 1, 1000000000)
+        && isOptionalString(data.get('attendantName', null), 100)
+        && isIntRange(data.version, 1, 1000000000)
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidTicket(value, businessId, ticketId) {
+      let data = value;
+      return data.keys().hasAll(['id', 'businessId', 'number', 'requestKey', 'requesterUid', 'requesterName', 'subject', 'category', 'priority', 'status', 'version', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'businessId', 'number', 'requestKey', 'requesterUid', 'requesterName', 'subject', 'category', 'priority', 'status', 'version', 'lastCustomerAt', 'lastSupportAt', 'customerSeenAt', 'supportSeenAt', 'createdAt', 'updatedAt'])
+        && isValidId(data.id) && data.id == ticketId
+        && isValidId(data.businessId) && data.businessId == businessId
+        && isIntRange(data.number, 1, 1000000000)
+        && isNonEmptyString(data.requestKey, 8, 128)
+        && isValidId(data.requesterUid)
+        && isNonEmptyString(data.requesterName, 1, 100)
+        && isNonEmptyString(data.subject, 3, 120)
+        && data.category in ['error', 'question', 'suggestion', 'complaint']
+        && data.priority in ['normal', 'urgent']
+        && data.status in ['open', 'in_progress', 'waiting_customer', 'resolved']
+        && isIntRange(data.version, 1, 1000000000)
+        && isOptionalTimestamp(data.get('lastCustomerAt', null))
+        && isOptionalTimestamp(data.get('lastSupportAt', null))
+        && isOptionalTimestamp(data.get('customerSeenAt', null))
+        && isOptionalTimestamp(data.get('supportSeenAt', null))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidTicketMessage(value, messageId) {
+      let data = value;
+      return data.keys().hasAll(['id', 'requestKey', 'side', 'actorUid', 'actorName', 'body', 'createdAt'])
+        && data.keys().hasOnly(['id', 'requestKey', 'side', 'actorUid', 'actorName', 'body', 'createdAt'])
+        && isValidId(data.id) && data.id == messageId
+        && isNonEmptyString(data.requestKey, 8, 128)
+        && data.side in ['customer', 'platform']
+        && isValidId(data.actorUid)
+        && isNonEmptyString(data.actorName, 1, 100)
+        && isNonEmptyString(data.body, 1, 4000)
+        && data.createdAt is timestamp;
+    }
+
+    // -------------------------------------------------------------------------
+    // 1. Connectivity Check
+    // -------------------------------------------------------------------------
+    match /test/{docId} {
+      allow get: if isValidId(docId) && docId == 'connection';
+      allow list: if false;
+      allow write: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. Platform Admins & Support Sessions
+    // -------------------------------------------------------------------------
+    match /platformAdmins/{uid} {
+      allow get: if isValidId(uid) && (isPlatformAdminByToken() || (isSignedIn() && request.auth.token.get('email_verified', false) == true && request.auth.uid == uid));
+      allow list: if isPlatformAdminByToken();
+      allow create: if resource == null && isPlatformAdminByToken()
+        && isValidId(uid)
+        && isValidPlatformAdmin(incoming(), uid)
+        && incoming().createdAt == request.time
+        && uid == request.auth.uid;
+      allow update: if resource != null && isPlatformAdminByToken()
+        && isValidId(uid)
+        && isValidPlatformAdmin(incoming(), uid)
+        && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'active'])
+        && incoming().createdAt == existing().createdAt;
+      allow delete: if false;
+    }
+
+    match /supportSessions/{sessionId} {
+      allow get: if isValidId(sessionId) && isPlatformAdmin();
+      allow list: if isPlatformAdminByToken();
+      allow create: if resource == null && isPlatformAdmin()
+        && isValidId(sessionId)
+        && isValidSupportSession(incoming(), sessionId)
+        && exists(businessPath(incoming().businessId))
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if resource != null && isPlatformAdmin()
+        && isValidId(sessionId)
+        && isValidSupportSession(incoming(), sessionId)
+        && existing().active == true
+        && incoming().id == existing().id
+        && incoming().businessId == existing().businessId
+        && incoming().supportUid == existing().supportUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['writeEnabled', 'writeReason', 'updatedAt'])
+          || incoming().diff(existing()).affectedKeys().hasOnly(['active', 'closedAt', 'updatedAt'])
+        );
+      allow delete: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. Public Non-PII Business Identifier Lookup (get only, no list scraping)
+    // -------------------------------------------------------------------------
+    match /businessAccess/{identifier} {
+      allow get: if isValidId(identifier);
+      allow list: if false;
+      allow create: if resource == null && isValidId(identifier)
+        && isValidBusinessAccess(incoming(), identifier)
+        && incoming().updatedAt == request.time
+        && (
+          isPlatformAdmin()
+          || (
+            incoming().kind in ['alias', 'cnpj']
+            && isTenantAdmin(incoming().businessId)
+          )
+        );
+      allow update: if resource != null && isValidId(identifier)
+        && isValidBusinessAccess(incoming(), identifier)
+        && incoming().identifier == existing().identifier
+        && incoming().businessId == existing().businessId
+        && incoming().updatedAt == request.time
+        && (
+          isPlatformAdmin()
+          || (
+            incoming().kind in ['alias', 'cnpj']
+            && isTenantAdmin(existing().businessId)
+          )
+        )
+        && incoming().diff(existing()).affectedKeys().hasOnly(['active', 'code', 'kind', 'updatedAt']);
+      allow delete: if isValidId(identifier)
+        && (isPlatformAdmin() || (existing().kind in ['alias', 'cnpj'] && isTenantAdmin(existing().businessId)));
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. UID -> Business Membership Map
+    // -------------------------------------------------------------------------
+    match /userBusinesses/{uid} {
+      allow get: if isValidId(uid) && isSignedIn() && (request.auth.uid == uid || isPlatformAdmin());
+      allow list: if isSignedIn() && (isPlatformAdminByToken() || resource.data.uid == request.auth.uid);
+      allow create: if resource == null && isValidId(uid)
+        && isValidUserBusiness(incoming(), uid)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && (!isRetail(incoming().businessId) || incoming().role != 'waiter')
+        && (incoming().role != 'waiter' || hasModule(incoming().businessId, 'tables'))
+        && (isPlatformAdmin() || isTenantAdmin(incoming().businessId));
+      allow update: if resource != null && isValidId(uid)
+        && isValidUserBusiness(incoming(), uid)
+        && incoming().uid == existing().uid
+        && incoming().businessId == existing().businessId
+        && incoming().username == existing().username
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['role', 'active', 'updatedAt'])
+        && (!isRetail(existing().businessId) || incoming().role != 'waiter' || (existing().role == 'waiter' && incoming().active == false))
+        && (incoming().role != 'waiter' || hasModule(existing().businessId, 'tables') || (existing().role == 'waiter' && incoming().active == false))
+        && isTenantAdmin(existing().businessId);
+      allow delete: if false;
+    }
+
+    // CollectionGroup rule for Platform Admin support tickets overview
+    match /{path=**}/tickets/{ticketId} {
+      allow list: if isPlatformAdminByToken();
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. Tenant Root & Subcollections (`/businesses/{businessId}/...`)
+    // -------------------------------------------------------------------------
+    match /businesses/{businessId} {
+      allow get: if isValidId(businessId) && isTenantMemberOrPlatform(businessId);
+      allow list: if isPlatformAdminByToken();
+      allow create: if resource == null && isPlatformAdmin()
+        && isValidId(businessId)
+        && isValidBusiness(incoming(), businessId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if resource != null && isValidId(businessId)
+        && isValidBusiness(incoming(), businessId)
+        && incoming().id == existing().id
+        && incoming().code == existing().code
+        && incoming().ownerUid == existing().ownerUid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          (isPlatformAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'accessAlias', 'active', 'deleted', 'businessKind', 'modules', 'userLimit', 'activeUserCount', 'openTicketCount', 'unreadTicketCount', 'lastSeenAt', 'updatedAt'])
+            && (incoming().get('userLimit', null) == null || existing().get('activeUserCount', null) == null || incoming().userLimit >= existing().activeUserCount)
+          )
+          || (isTenantAdmin(businessId) && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'accessAlias', 'updatedAt']))
+          || (isBusinessMember(businessId) && incoming().diff(existing()).affectedKeys().hasOnly(['lastSeenAt', 'openTicketCount', 'unreadTicketCount', 'updatedAt']))
+        );
+      allow delete: if false;
+
+      // Members (staff & owners)
+      match /members/{uid} {
+        allow get: if isValidId(businessId) && isValidId(uid)
+          && (isPlatformAdmin() || (isSignedIn() && request.auth.uid == uid) || isTenantAdmin(businessId));
+        allow list: if isTenantAdmin(businessId) || isPlatformAdminByToken();
+        allow create: if resource == null && isValidId(businessId) && isValidId(uid)
+          && isValidMember(incoming(), businessId, uid)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && (!isRetail(businessId) || incoming().role != 'waiter')
+          && (incoming().role != 'waiter' || hasModule(businessId, 'tables'))
+          && (
+            isPlatformAdmin()
+            || get(settingsPath(businessId)).data.get('userLimit', null) == null
+            || incoming().active == false
+            || getAfter(settingsPath(businessId)).data.get('activeUserCount', 0) <= getAfter(settingsPath(businessId)).data.get('userLimit', 1000000)
+          )
+          && (isPlatformAdmin() || (isTenantAdmin(businessId) && incoming().isOwner == false));
+        allow update: if resource != null && isValidId(businessId) && isValidId(uid)
+          && isValidMember(incoming(), businessId, uid)
+          && incoming().uid == existing().uid
+          && incoming().businessId == existing().businessId
+          && incoming().username == existing().username
+          && incoming().isOwner == existing().isOwner
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && (!isRetail(businessId) || incoming().role != 'waiter' || (existing().role == 'waiter' && incoming().active == false))
+          && (incoming().role != 'waiter' || hasModule(businessId, 'tables') || (existing().role == 'waiter' && incoming().active == false))
+          && (
+            isPlatformAdmin()
+            || get(settingsPath(businessId)).data.get('userLimit', null) == null
+            || incoming().active == false
+            || existing().active == true
+            || getAfter(settingsPath(businessId)).data.get('activeUserCount', 0) <= getAfter(settingsPath(businessId)).data.get('userLimit', 1000000)
+          )
+          && (
+            (isPlatformAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'role', 'permissions', 'active', 'mustChangePassword', 'version', 'lastSeenAt', 'updatedAt']))
+            || (isTenantAdmin(businessId) && !(existing().isOwner && request.auth.uid != uid) && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'role', 'permissions', 'active', 'version', 'updatedAt']))
+            || (isSignedIn() && request.auth.uid == uid && existing().active == true && incoming().mustChangePassword == false && incoming().diff(existing()).affectedKeys().hasOnly(['mustChangePassword', 'updatedAt']))
+            || (isSignedIn() && request.auth.uid == uid && existing().active == true && incoming().diff(existing()).affectedKeys().hasOnly(['lastSeenAt', 'updatedAt']))
+          );
+        allow delete: if false;
+      }
+
+      // Editable role profiles
+      match /profiles/{role} {
+        allow get, list: if isTenantMemberOrPlatform(businessId);
+        allow create: if resource == null && isValidId(businessId) && isValidId(role)
+          && isValidRoleProfile(incoming(), role)
+          && incoming().updatedAt == request.time
+          && (!isRetail(businessId) || role != 'waiter' || isPlatformAdmin())
+          && (role != 'waiter' || hasModule(businessId, 'tables') || isPlatformAdmin())
+          && (isPlatformAdmin() || isTenantAdmin(businessId));
+        allow update: if resource != null && isValidId(businessId) && isValidId(role)
+          && isValidRoleProfile(incoming(), role)
+          && incoming().role == existing().role
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'permissions', 'version', 'updatedBy', 'updatedAt'])
+          && (!isRetail(businessId) || role != 'waiter' || isPlatformAdmin())
+          && (role != 'waiter' || hasModule(businessId, 'tables') || isPlatformAdmin())
+          && (isPlatformAdmin() || isTenantAdmin(businessId));
+        allow delete: if false;
+      }
+
+      // Business settings (internal)
+      match /settings/{settingId} {
+        allow get: if isValidId(businessId) && isValidId(settingId) && hasTenantPerm(businessId, 'settings.read');
+        allow list: if hasTenantPerm(businessId, 'settings.read');
+        allow create: if resource == null && isValidId(businessId) && isValidId(settingId) && settingId == 'main'
+          && isValidSettings(incoming())
+          && incoming().updatedAt == request.time
+          && (
+            isPlatformAdmin()
+            || (hasTenantPerm(businessId, 'settings.manage') && incoming().businessKind == 'food')
+          );
+        allow update: if resource != null && isValidId(businessId) && isValidId(settingId) && settingId == 'main'
+          && isValidSettings(incoming())
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'mode', 'paper', 'businessKind', 'modules', 'userLimit', 'activeUserCount', 'legalName', 'cnpj', 'address', 'phone', 'receiptMessage', 'blindClose', 'logoKey', 'themeColor', 'updatedAt'])
+          && (
+            (isPlatformAdmin() && (incoming().get('userLimit', null) == null || existing().get('activeUserCount', null) == null || incoming().userLimit >= existing().activeUserCount))
+            || (
+              hasTenantPerm(businessId, 'settings.manage')
+              && (
+                (existing().get('businessKind', null) != null && incoming().businessKind == existing().businessKind)
+                || (existing().get('businessKind', null) == null && incoming().businessKind == 'food')
+              )
+              && incoming().get('modules', null) == existing().get('modules', null)
+              && incoming().get('userLimit', null) == existing().get('userLimit', null)
+              && (
+                incoming().get('activeUserCount', null) == existing().get('activeUserCount', null)
+                || (
+                  incoming().diff(existing()).affectedKeys().hasOnly(['activeUserCount', 'updatedAt'])
+                  && (existing().get('userLimit', null) == null || incoming().activeUserCount <= existing().userLimit)
+                )
+              )
+            )
+          );
+        allow delete: if false;
+      }
+
+      // Sanitized public menu settings (/cardapio/)
+      match /publicSettings/{docId} {
+        allow get: if isValidId(businessId) && isValidId(docId) && docId == 'menu';
+        allow list: if false;
+        allow create, update: if isValidId(businessId) && isValidId(docId) && docId == 'menu'
+          && isValidPublicSettings(incoming())
+          && incoming().updatedAt == request.time
+          && hasTenantPerm(businessId, 'settings.manage');
+        allow delete: if false;
+      }
+
+      // Sanitized public products (/cardapio/) - zero costs or internal IDs
+      match /publicProducts/{productId} {
+        allow get: if isValidId(businessId) && isValidId(productId);
+        allow list: if isValidId(businessId) && resource.data.visible == true;
+        allow create, update: if isValidId(businessId) && isValidId(productId)
+          && isValidPublicProduct(incoming(), productId)
+          && incoming().updatedAt == request.time
+          && hasTenantPerm(businessId, 'products.manage');
+        allow delete: if isValidId(businessId) && isValidId(productId)
+          && hasTenantPerm(businessId, 'products.manage');
+      }
+
+      // Internal products catalog (public-safe prices; costs strictly isolated in private/cost)
+      match /products/{productId} {
+        allow get, list: if hasTenantPerm(businessId, 'catalog.read');
+        allow create: if resource == null && isValidId(businessId) && isValidId(productId)
+          && isValidProduct(incoming(), productId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && (incoming().stockMode == 'none' || hasModule(businessId, 'inventory'))
+          && (!isRetail(businessId) || incoming().stockMode != 'recipe')
+          && hasTenantPerm(businessId, 'products.manage');
+        allow update: if resource != null && isValidId(businessId) && isValidId(productId)
+          && isValidProduct(incoming(), productId)
+          && incoming().id == existing().id
+          && incoming().code == existing().code
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && (incoming().stockMode == 'none' || incoming().stockMode == existing().stockMode || hasModule(businessId, 'inventory'))
+          && (!isRetail(businessId) || incoming().stockMode != 'recipe' || existing().stockMode == 'recipe')
+          && hasTenantPerm(businessId, 'products.manage')
+          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'category', 'priceCents', 'imageKey', 'active', 'available', 'visible', 'options', 'addons', 'quickNotes', 'barcode', 'saleUnit', 'packaging', 'stockMode', 'finishedInventoryId', 'trackStock', 'costMode', 'version', 'updatedAt']);
+        allow delete: if false;
+
+        match /private/{docId} {
+          allow get, list: if isValidId(businessId) && isValidId(productId) && isValidId(docId) && docId == 'cost'
+            && hasModule(businessId, 'costs')
+            && hasTenantPerm(businessId, 'products.costs');
+          allow create, update: if isValidId(businessId) && isValidId(productId) && isValidId(docId) && docId == 'cost'
+            && isValidPrivateCost(incoming())
+            && incoming().updatedAt == request.time
+            && hasModule(businessId, 'costs')
+            && hasTenantPerm(businessId, 'products.costs');
+          allow delete: if isValidId(businessId) && isValidId(productId) && isValidId(docId) && docId == 'cost'
+            && hasModule(businessId, 'costs')
+            && hasTenantPerm(businessId, 'products.costs');
+        }
+      }
+
+      // Compressed media (photos & logo)
+      match /media/{mediaId} {
+        allow get: if isValidId(businessId) && isValidId(mediaId) && (hasTenantPerm(businessId, 'catalog.read') || hasTenantPerm(businessId, 'settings.read'));
+        allow list: if hasTenantPerm(businessId, 'catalog.read') || hasTenantPerm(businessId, 'settings.read');
+        allow create: if resource == null && isValidId(businessId) && isValidId(mediaId)
+          && isValidMedia(incoming(), mediaId)
+          && incoming().createdBy == request.auth.uid
+          && incoming().createdAt == request.time
+          && (hasTenantPerm(businessId, 'products.manage') || hasTenantPerm(businessId, 'settings.manage'));
+        allow update, delete: if false;
+      }
+
+      // Dining tables (food modality + tables module only)
+      match /tables/{tableId} {
+        allow get, list: if !isRetail(businessId) && hasModule(businessId, 'tables') && hasTenantPerm(businessId, 'tables.read');
+        allow create: if resource == null && isValidId(businessId) && isValidId(tableId)
+          && isValidTable(incoming(), tableId)
+          && incoming().createdAt == request.time
+          && !isRetail(businessId)
+          && hasModule(businessId, 'tables')
+          && hasTenantPerm(businessId, 'tables.manage');
+        allow update: if resource != null && isValidId(businessId) && isValidId(tableId)
+          && isValidTable(incoming(), tableId)
+          && incoming().id == existing().id
+          && incoming().createdAt == existing().createdAt
+          && incoming().diff(existing()).affectedKeys().hasOnly(['seats', 'active'])
+          && !isRetail(businessId)
+          && hasModule(businessId, 'tables')
+          && hasTenantPerm(businessId, 'tables.manage');
+        allow delete: if false;
+      }
+
+      // Orders / Comandas / Direct Sales
+      match /orders/{orderId} {
+        allow get: if isValidId(businessId) && isValidId(orderId) && (
+          hasTenantPerm(businessId, 'orders.shared')
+          || (hasTenantPerm(businessId, 'orders.read') && existing().actorId == request.auth.uid)
+        );
+        allow list: if hasTenantPerm(businessId, 'orders.shared')
+          || (hasTenantPerm(businessId, 'orders.read') && resource.data.actorId == request.auth.uid);
+        allow create: if resource == null && isValidId(businessId) && isValidId(orderId)
+          && isValidOrder(incoming(), orderId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && (
+            (
+              incoming().state == 'closed'
+              && (incoming().get('tableNumber', null) == null || (!isRetail(businessId) && hasModule(businessId, 'tables')))
+              && (incoming().get('paidCents', 0) > 0 || hasTenantPerm(businessId, 'payments.receive'))
+              && incoming().closedAt == request.time
+              && incoming().get('paidCents', 0) >= incoming().totalCents
+              && (incoming().totalCents > 0 || incoming().get('exchangeFromOrderId', null) != null)
+              && (incoming().discountCents == 0 || hasTenantPerm(businessId, 'discounts.authorize'))
+              && (incoming().get('exchangeFromOrderId', null) == null || hasTenantPerm(businessId, 'payments.refund'))
+              && (
+                incoming().get('paidCents', 0) == 0
+                || hasAtomicSaleLedger(
+                  businessId,
+                  orderId,
+                  incoming().get('lastLedgerId', null),
+                  incoming().get('paidCents', 0),
+                  incoming().get('exchangeFromOrderId', null) == null
+                )
+              )
+            )
+            || (
+              !isRetail(businessId)
+              && (incoming().get('tableNumber', null) == null || hasModule(businessId, 'tables'))
+              && hasTenantPerm(businessId, 'orders.create')
+              && incoming().state == 'open'
+              && incoming().discountCents == 0
+              && incoming().get('paidCents', 0) == 0
+              && incoming().get('lastLedgerId', null) == null
+              && incoming().checkoutWaiting == false
+              && incoming().actorId == request.auth.uid
+            )
+          );
+        function canUpdateOrder() {
+          let next = request.resource.data;
+          let platform = isPlatformAdmin();
+          let member = memberExists(businessId, request.auth.uid) ? memberData(businessId) : {'role': 'none'};
+          let profile = profilePerms(businessId, member.role);
+          let business = get(businessPath(businessId)).data;
+          let previous = resource.data;
+          let changes = next.diff(previous).affectedKeys();
+          return (platform || (member.get('active', false) == true && business.active == true && business.deleted == false)) && isValidId(businessId) && isValidId(orderId)
+          && next.version == previous.version + 1
+          && next.get('paidCents', 0) <= next.totalCents
+          && next.id == previous.id
+          && next.number == previous.number
+          && next.requestKey == previous.requestKey
+          && next.actorId == previous.actorId
+          && next.createdAt == previous.createdAt
+          && next.updatedAt == request.time
+          && (
+            // 1. An items mutation can only use the add-items transition.
+            changes.hasAny(['items']) ? (
+              !isRetail(businessId)
+              && isListOfMaps(next.items, 100)
+              && isIntRange(next.totalCents, 0, 100000000)
+              && next.fulfillment in ['pending', 'delivered']
+              &&
+              previous.state == 'open'
+              && next.state == 'open'
+              && next.totalCents >= previous.totalCents
+              && next.version == previous.version + 1
+              && changes.hasOnly(['items', 'totalCents', 'fulfillment', 'version', 'updatedAt'])
+              && (platform || resolvedMemberPerm(member, profile, 'orders.update'))
+              && (previous.actorId == request.auth.uid || platform || resolvedMemberPerm(member, profile, 'orders.shared'))
+            )
+            // 2. Mark delivered (open OR paid closed kitchen items)
+            : ((
+              (previous.state == 'open' || previous.state == 'closed')
+              && next.state == previous.state
+              && next.fulfillment == 'delivered'
+              && changes.hasOnly(['fulfillment', 'version', 'updatedAt'])
+              && (platform || resolvedMemberPerm(member, profile, 'orders.deliver'))
+              && (previous.actorId == request.auth.uid || platform || resolvedMemberPerm(member, profile, 'orders.shared'))
+            )
+            // 3. Hold / release checkout waiting
+            || (
+              previous.state == 'open'
+              && next.state == 'open'
+              && next.checkoutWaiting is bool
+              && isOptionalTimestamp(next.get('checkoutHeldAt', null))
+              && isOptionalId(next.get('checkoutHeldBy', null))
+              && changes.hasOnly(['checkoutWaiting', 'checkoutHeldAt', 'checkoutHeldBy', 'version', 'updatedAt'])
+              && (platform || resolvedMemberPerm(member, profile, 'payments.receive'))
+              && (previous.actorId == request.auth.uid || platform || resolvedMemberPerm(member, profile, 'orders.shared'))
+            )
+            // 4. Attach / detach customer
+            || (
+              previous.state == 'open'
+              && next.state == 'open'
+              && next.version == previous.version + 1
+              && isOptionalId(next.get('customerId', null))
+              && isOptionalString(next.get('customerName', null), 100)
+              && changes.hasOnly(['customerId', 'customerName', 'version', 'updatedAt'])
+              && (platform || resolvedMemberPerm(member, profile, 'payments.receive'))
+              && (previous.actorId == request.auth.uid || platform || resolvedMemberPerm(member, profile, 'orders.shared'))
+            )
+            // 5. Authorize discount (cannot reduce below paidCents)
+            || (
+              previous.state == 'open'
+              && next.state == 'open'
+              && next.totalCents >= next.get('paidCents', 0)
+              && next.version == previous.version + 1
+              && isIntRange(next.totalCents, 0, 100000000)
+              && isIntRange(next.discountCents, 0, 100000000)
+              && isOptionalString(next.get('discountReason', null), 200)
+              && isOptionalId(next.get('authorizedBy', null))
+              && changes.hasOnly(['totalCents', 'discountCents', 'discountReason', 'authorizedBy', 'version', 'updatedAt'])
+              && (platform || resolvedMemberPerm(member, profile, 'discounts.authorize'))
+              && (previous.actorId == request.auth.uid || platform || resolvedMemberPerm(member, profile, 'orders.shared'))
+            )
+            // 6. Register payment and/or close paid order (atomic ledger + open session required for paidCents increase)
+            || (
+              previous.state == 'open'
+              && (
+                next.state == 'open'
+                || (
+                  next.state == 'closed'
+                  && next.closedAt == request.time
+                  && next.get('paidCents', 0) >= next.totalCents
+                )
+              )
+              && isIntRange(next.get('paidCents', 0), 0, 100000000)
+              && isOptionalId(next.get('lastLedgerId', null))
+              && next.checkoutWaiting is bool
+              && isOptionalTimestamp(next.get('checkoutHeldAt', null))
+              && isOptionalId(next.get('checkoutHeldBy', null))
+              && isOptionalTimestamp(next.get('closedAt', null))
+              && next.get('paidCents', 0) >= previous.get('paidCents', 0)
+              && next.get('paidCents', 0) <= next.totalCents
+              && next.totalCents == previous.totalCents
+              && next.version == previous.version + 1
+              && (
+                (
+                  next.get('paidCents', 0) > previous.get('paidCents', 0)
+                  && changes.hasOnly(['paidCents', 'lastLedgerId', 'state', 'checkoutWaiting', 'checkoutHeldAt', 'checkoutHeldBy', 'closedAt', 'version', 'updatedAt'])
+                  && hasAtomicSaleLedger(
+                    businessId,
+                    orderId,
+                    next.get('lastLedgerId', null),
+                    next.get('paidCents', 0) - previous.get('paidCents', 0),
+                    true
+                  )
+                )
+                || (
+                  next.get('paidCents', 0) == previous.get('paidCents', 0)
+                  && next.state == 'closed'
+                  && previous.get('paidCents', 0) >= previous.totalCents
+                  && (previous.totalCents == 0 || previous.get('paidCents', 0) > 0)
+                  && changes.hasOnly(['state', 'checkoutWaiting', 'checkoutHeldAt', 'checkoutHeldBy', 'closedAt', 'version', 'updatedAt'])
+                )
+              )
+              // A paid increase requires a NEW ledger entry above. Its create rule
+              // checks payments.receive in the same atomic commit; do not repeat it.
+              && (next.get('paidCents', 0) > previous.get('paidCents', 0)
+                || platform || resolvedMemberPerm(member, profile, 'payments.receive'))
+              && (previous.actorId == request.auth.uid || platform || resolvedMemberPerm(member, profile, 'orders.shared'))
+            )
+            // 7. Cancel unpaid open order
+            || (
+              previous.state == 'open'
+              && next.state == 'cancelled'
+              && previous.get('paidCents', 0) == 0
+              && next.fulfillment == 'delivered'
+              && isOptionalId(next.get('authorizedBy', null))
+              && changes.hasOnly(['state', 'fulfillment', 'authorizedBy', 'version', 'updatedAt'])
+              && (platform || resolvedMemberPerm(member, profile, 'orders.cancel'))
+              && (previous.actorId == request.auth.uid || platform || resolvedMemberPerm(member, profile, 'orders.shared'))
+            )
+            // 8. Refund / Return version + refundCents update on closed order
+            || (
+              previous.state == 'closed'
+              && next.state == 'closed'
+              && isIntRange(next.get('refundCents', 0), 0, 100000000)
+              && next.get('refundCents', 0) >= previous.get('refundCents', 0)
+              && next.get('refundCents', 0) <= next.get('paidCents', previous.totalCents)
+              && next.version == previous.version + 1
+              && changes.hasOnly(['refundCents', 'version', 'updatedAt'])
+              && (platform || resolvedMemberPerm(member, profile, 'payments.refund'))
+              && (previous.actorId == request.auth.uid || platform || resolvedMemberPerm(member, profile, 'orders.shared'))
+            )
+            )
+          );
+        }
+        function canReceiveOrderPayment() {
+          let next = request.resource.data;
+          let previous = resource.data;
+          return previous.state == 'open'
+            && next.version == previous.version + 1
+            && next.totalCents == previous.totalCents
+            && isIntRange(next.paidCents, 1, 100000000)
+            && next.paidCents > previous.get('paidCents', 0)
+            && next.paidCents <= next.totalCents
+            && next.checkoutWaiting is bool
+            && isOptionalTimestamp(next.get('checkoutHeldAt', null))
+            && isOptionalId(next.get('checkoutHeldBy', null))
+            && next.updatedAt == request.time
+            && (next.state == 'open' || (next.state == 'closed' && next.closedAt == request.time && next.paidCents == next.totalCents))
+            && isOptionalTimestamp(next.get('closedAt', null))
+            && next.diff(previous).affectedKeys().hasOnly(['paidCents', 'lastLedgerId', 'state', 'checkoutWaiting', 'checkoutHeldAt', 'checkoutHeldBy', 'closedAt', 'version', 'updatedAt'])
+            && hasAtomicSaleLedger(businessId, orderId, next.get('lastLedgerId', null), next.paidCents - previous.get('paidCents', 0), true);
+        }
+        allow update: if resource != null && (request.resource.data.get('paidCents', 0) > resource.data.get('paidCents', 0)
+          ? canReceiveOrderPayment() : canUpdateOrder());
+        allow delete: if false;
+      }
+
+      // Sale Drafts (owner-isolated)
+      match /drafts/{draftId} {
+        allow get: if isValidId(businessId) && isValidId(draftId)
+          && hasTenantPerm(businessId, 'drafts.manage')
+          && (existing().ownerId == request.auth.uid || isTenantAdmin(businessId));
+        allow list: if hasTenantPerm(businessId, 'drafts.manage') && resource.data.ownerId == request.auth.uid;
+        allow create: if resource == null && isValidId(businessId) && isValidId(draftId)
+          && isValidDraft(incoming(), draftId)
+          && incoming().ownerId == request.auth.uid
+          && incoming().state == 'waiting'
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && hasTenantPerm(businessId, 'drafts.manage');
+        allow update: if resource != null && isValidId(businessId) && isValidId(draftId)
+          && isValidDraft(incoming(), draftId)
+          && existing().ownerId == request.auth.uid
+          && existing().state == 'waiting'
+          && incoming().id == existing().id
+          && incoming().ownerId == existing().ownerId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'items', 'state', 'convertedOrderId', 'version', 'updatedAt'])
+          && hasTenantPerm(businessId, 'drafts.manage');
+        allow delete: if false;
+      }
+
+      // User Favorites (user-isolated)
+      match /favorites/{uid} {
+        allow get: if isValidId(businessId) && isValidId(uid) && isTenantMemberOrPlatform(businessId) && request.auth.uid == uid;
+        allow list: if false;
+        allow create, update: if isValidId(businessId) && isValidId(uid)
+          && hasTenantPerm(businessId, 'favorites.manage')
+          && request.auth.uid == uid
+          && isValidFavorites(incoming(), uid)
+          && incoming().updatedAt == request.time;
+        allow delete: if false;
+      }
+
+      // Cash Sessions (Cashier/Admin perms only; Waiters strictly denied; atomic single open session via lock)
+      match /cashSessions/{sessionId} {
+        allow get, list: if hasTenantPerm(businessId, 'cash.access');
+        allow create: if resource == null && isValidId(businessId) && isValidId(sessionId)
+          && isValidCashSession(incoming(), sessionId)
+          && incoming().state == 'open'
+          && incoming().actorId == request.auth.uid
+          && incoming().get('cashBalanceCents', incoming().openingCents) == incoming().openingCents
+          && incoming().openedAt == request.time
+          && incoming().updatedAt == request.time
+          && hasTenantPerm(businessId, 'cash.open')
+          && !(exists(lockDocPath(businessId, 'activeCashSession')) && get(lockDocPath(businessId, 'activeCashSession')).data.active == true)
+          && getAfter(lockDocPath(businessId, 'activeCashSession')).data.active == true
+          && getAfter(lockDocPath(businessId, 'activeCashSession')).data.resourceId == sessionId;
+        function canUpdateCashSession() {
+          let next = request.resource.data;
+          let previous = resource.data;
+          return previous.state == 'open'
+          && next.updatedAt == request.time
+          && (
+            (
+              next.state == 'closed'
+              && isValidCashSession(next, sessionId)
+              && next.closedAt == request.time
+              && next.diff(previous).affectedKeys().hasOnly(['state', 'countedCents', 'expectedCents', 'differenceCents', 'countedMethods', 'expectedMethods', 'differenceMethods', 'closedAt', 'version', 'updatedAt'])
+              && hasTenantPerm(businessId, 'cash.close')
+            )
+            || (
+              next.state == 'open'
+              && isIntRange(next.get('cashBalanceCents', 0), 0, 100000000)
+              && next.get('methodTotals', {}) is map
+              && next.get('methodTotals', {}).size() <= 10
+              && next.get('version', 1) == previous.get('version', 1) + 1
+              && next.diff(previous).affectedKeys().hasOnly(['cashBalanceCents', 'methodTotals', 'version', 'updatedAt'])
+              && (
+                hasTenantPerm(businessId, 'payments.receive')
+                || hasTenantPerm(businessId, 'payments.refund')
+                || hasTenantPerm(businessId, 'cash.movements')
+                || hasTenantPerm(businessId, 'expenses.create')
+                || hasTenantPerm(businessId, 'finance.manage')
+              )
+            )
+          );
+        }
+        allow update: if resource != null && canUpdateCashSession();
+        allow delete: if false;
+      }
+
+      // Financial Ledger
+      match /ledger/{entryId} {
+        allow get, list: if hasTenantPerm(businessId, 'cash.access') || hasTenantPerm(businessId, 'finance.view');
+        function canCreateLedger() {
+          let next = request.resource.data;
+          return isValidLedgerEntry(next, entryId)
+          && next.actorId == request.auth.uid
+          && next.createdAt == request.time
+          && next.updatedAt == request.time
+          && (
+            (
+              next.kind == 'sale'
+              && next.amountCents > 0
+              && (isPlatformAdmin() || tenantPaymentScope(businessId, getAfter(orderDocPath(businessId, next.orderId)).data))
+              && isValidId(next.get('orderId', null))
+              && checkSaleOrderAfter(getAfter(orderDocPath(businessId, next.orderId)).data, entryId, next.amountCents)
+              && isValidId(next.get('sessionId', null))
+              && checkOpenSessionTick(
+                get(cashSessionDocPath(businessId, next.sessionId)).data,
+                getAfter(cashSessionDocPath(businessId, next.sessionId)).data
+              )
+            )
+            || (next.kind == 'refund' && next.amountCents < 0 && hasTenantPerm(businessId, 'payments.refund'))
+            || (next.kind in ['supply', 'withdrawal'] && hasTenantPerm(businessId, 'cash.movements'))
+            || (next.kind == 'expense' && next.amountCents < 0 && hasTenantPerm(businessId, 'expenses.create'))
+            || (next.kind in ['payable', 'receivable', 'fee'] && hasTenantPerm(businessId, 'finance.manage'))
+          );
+        }
+        allow create: if resource == null && canCreateLedger();
+        allow update: if resource != null && isValidId(businessId) && isValidId(entryId)
+          && isValidLedgerEntry(incoming(), entryId)
+          && incoming().id == existing().id
+          && incoming().requestKey == existing().requestKey
+          && incoming().kind == existing().kind
+          && incoming().method == existing().method
+          && incoming().amountCents == existing().amountCents
+          && incoming().actorId == existing().actorId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && (
+            (
+              hasTenantPerm(businessId, 'finance.manage')
+              && incoming().diff(existing()).affectedKeys().hasOnly(['category', 'reconciledAt', 'externalReference', 'reconciledBy', 'updatedAt'])
+            )
+            || (
+              hasTenantPerm(businessId, 'payments.refund')
+              && existing().kind == 'sale'
+              && incoming().get('refundedCents', 0) > existing().get('refundedCents', 0)
+              && incoming().get('refundedCents', 0) <= existing().amountCents
+              && incoming().diff(existing()).affectedKeys().hasOnly(['refundedCents', 'updatedAt'])
+            )
+          );
+        allow delete: if false;
+      }
+
+      // Accounts Payable / Receivable (finance.view / finance.manage)
+      match /accounts/{accountId} {
+        allow get, list: if hasTenantPerm(businessId, 'finance.view');
+        allow create: if resource == null && isValidId(businessId) && isValidId(accountId)
+          && isValidFinancialAccount(incoming(), accountId)
+          && incoming().actorId == request.auth.uid
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && hasTenantPerm(businessId, 'finance.manage');
+        allow update: if resource != null && isValidId(businessId) && isValidId(accountId)
+          && isValidFinancialAccount(incoming(), accountId)
+          && existing().state == 'pending'
+          && incoming().state == 'settled'
+          && incoming().id == existing().id
+          && incoming().requestKey == existing().requestKey
+          && incoming().kind == existing().kind
+          && incoming().amountCents == existing().amountCents
+          && incoming().actorId == existing().actorId
+          && incoming().createdAt == existing().createdAt
+          && incoming().settledAt == request.time
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['state', 'settledAt', 'updatedAt'])
+          && hasTenantPerm(businessId, 'finance.manage');
+        allow delete: if false;
+      }
+
+      // Customers (PII restricted to cash.access / payments.receive)
+      match /customers/{customerId} {
+        allow get, list: if hasTenantPerm(businessId, 'cash.access');
+        allow create: if resource == null && isValidId(businessId) && isValidId(customerId)
+          && isValidCustomer(incoming(), customerId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && hasTenantPerm(businessId, 'payments.receive');
+        allow update: if resource != null && isValidId(businessId) && isValidId(customerId)
+          && isValidCustomer(incoming(), customerId)
+          && incoming().id == existing().id
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'email', 'document', 'notes', 'active', 'version', 'updatedAt'])
+          && hasTenantPerm(businessId, 'payments.receive');
+        allow delete: if false;
+      }
+
+      // Suppliers (reports.view)
+      match /suppliers/{supplierId} {
+        allow get, list: if hasTenantPerm(businessId, 'reports.view');
+        allow create: if resource == null && isValidId(businessId) && isValidId(supplierId)
+          && isValidSupplier(incoming(), supplierId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && hasTenantPerm(businessId, 'reports.view');
+        allow update: if resource != null && isValidId(businessId) && isValidId(supplierId)
+          && isValidSupplier(incoming(), supplierId)
+          && incoming().id == existing().id
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'document', 'notes', 'active', 'updatedAt'])
+          && hasTenantPerm(businessId, 'reports.view');
+        allow delete: if false;
+      }
+
+      // Inventory Items (list/manage restricted to reports.view; get allowed for products.costs)
+      match /inventoryItems/{itemId} {
+        allow get: if isValidId(businessId) && isValidId(itemId) && (hasTenantPerm(businessId, 'reports.view') || hasTenantPerm(businessId, 'products.costs'));
+        allow list: if hasTenantPerm(businessId, 'reports.view');
+        allow create: if resource == null && isValidId(businessId) && isValidId(itemId)
+          && isValidInventoryItem(incoming(), itemId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && hasTenantPerm(businessId, 'reports.view');
+        allow update: if resource != null && isValidId(businessId) && isValidId(itemId)
+          && isValidInventoryItem(incoming(), itemId)
+          && incoming().id == existing().id
+          && incoming().unit == existing().unit
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && (
+            (hasTenantPerm(businessId, 'reports.view') && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'minimumMilli', 'unitCostMicro', 'active', 'updatedAt']))
+            || (hasTenantPerm(businessId, 'products.costs') && incoming().diff(existing()).affectedKeys().hasOnly(['unitCostMicro', 'updatedAt']))
+            || (hasTenantPerm(businessId, 'payments.refund') && incoming().diff(existing()).affectedKeys().hasOnly(['unitCostMicro', 'updatedAt']))
+          );
+        allow delete: if false;
+      }
+
+      // Inventory Stock Quantities (no costs; readable/deductible during sales; restockable on returns)
+      match /inventoryStock/{itemId} {
+        allow get, list: if hasTenantPerm(businessId, 'catalog.read') || hasTenantPerm(businessId, 'reports.view');
+        allow create: if resource == null && isValidId(businessId) && isValidId(itemId)
+          && isValidInventoryStock(incoming(), itemId)
+          && incoming().updatedAt == request.time
+          && (hasTenantPerm(businessId, 'reports.view') || (hasTenantPerm(businessId, 'products.manage') && incoming().balanceMilli == 0));
+        allow update: if resource != null && isValidId(businessId) && isValidId(itemId)
+          && isValidInventoryStock(incoming(), itemId)
+          && incoming().itemId == existing().itemId
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['balanceMilli', 'updatedAt'])
+          && (
+            hasTenantPerm(businessId, 'reports.view')
+            || hasTenantPerm(businessId, 'payments.refund')
+            || ((hasTenantPerm(businessId, 'orders.create') || hasTenantPerm(businessId, 'orders.update') || hasTenantPerm(businessId, 'payments.receive'))
+                && incoming().balanceMilli <= existing().balanceMilli)
+          );
+        allow delete: if false;
+      }
+
+      // Inventory Moves (append-only)
+      match /inventoryMoves/{moveId} {
+        allow get, list: if hasTenantPerm(businessId, 'reports.view');
+        allow create: if resource == null && isValidId(businessId) && isValidId(moveId)
+          && isValidInventoryMove(incoming(), moveId)
+          && incoming().actorId == request.auth.uid
+          && incoming().createdAt == request.time
+          && (
+            hasTenantPerm(businessId, 'reports.view')
+            || (hasTenantPerm(businessId, 'payments.refund') && incoming().kind in ['sale', 'return'])
+            || ((hasTenantPerm(businessId, 'orders.create') || hasTenantPerm(businessId, 'orders.update') || hasTenantPerm(businessId, 'payments.receive'))
+                && incoming().kind == 'sale' && incoming().quantityMilli <= 0)
+          );
+        allow update, delete: if false;
+      }
+
+      // Recipes (composition IDs & quantities, zero cost; retail allows only 1:1 unit-stock links)
+      match /recipes/{productId} {
+        allow get, list: if hasTenantPerm(businessId, 'catalog.read') || hasTenantPerm(businessId, 'reports.view');
+        allow create, update: if isValidId(businessId) && isValidId(productId)
+          && isValidRecipe(incoming(), productId)
+          && incoming().updatedAt == request.time
+          && (!isRetail(businessId) || (incoming().items.size() == 1 && incoming().items[0].get('quantityMilli', 0) == 1000))
+          && hasTenantPerm(businessId, 'reports.view');
+        allow delete: if isValidId(businessId) && isValidId(productId) && hasTenantPerm(businessId, 'reports.view');
+      }
+
+      // Purchases (reports.view)
+      match /purchases/{purchaseId} {
+        allow get, list: if hasTenantPerm(businessId, 'reports.view');
+        allow create: if resource == null && isValidId(businessId) && isValidId(purchaseId)
+          && isValidPurchase(incoming(), purchaseId)
+          && incoming().state == 'draft'
+          && incoming().actorId == request.auth.uid
+          && incoming().createdAt == request.time
+          && hasTenantPerm(businessId, 'reports.view');
+        allow update: if resource != null && isValidId(businessId) && isValidId(purchaseId)
+          && isValidPurchase(incoming(), purchaseId)
+          && existing().state == 'draft'
+          && incoming().state == 'received'
+          && incoming().id == existing().id
+          && incoming().requestKey == existing().requestKey
+          && incoming().actorId == existing().actorId
+          && incoming().createdAt == existing().createdAt
+          && incoming().receivedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['state', 'receivedAt'])
+          && hasTenantPerm(businessId, 'reports.view');
+        allow delete: if false;
+      }
+
+      // Sale Returns & Exchanges (payments.refund; append-only)
+      match /returns/{returnId} {
+        allow get, list: if hasTenantPerm(businessId, 'payments.refund');
+        allow create: if resource == null && isValidId(businessId) && isValidId(returnId)
+          && isValidSaleReturn(incoming(), returnId)
+          && incoming().actorId == request.auth.uid
+          && incoming().createdAt == request.time
+          && hasTenantPerm(businessId, 'payments.refund')
+          && (incoming().kind != 'exchange' || (hasTenantPerm(businessId, 'payments.receive') && hasTenantPerm(businessId, 'orders.create')));
+        allow update, delete: if false;
+      }
+
+      // Audit Logs (append-only)
+      match /auditLogs/{auditId} {
+        allow get, list: if hasTenantPerm(businessId, 'reports.view');
+        allow create: if resource == null && isValidId(businessId) && isValidId(auditId)
+          && isValidAuditLog(incoming(), auditId)
+          && incoming().actorId == request.auth.uid
+          && incoming().createdAt == request.time
+          && isTenantMemberOrPlatform(businessId);
+        allow update, delete: if false;
+      }
+
+      // Atomic Counters
+      match /counters/{counterName} {
+        allow get: if isValidId(businessId) && isValidId(counterName) && isTenantMemberOrPlatform(businessId);
+        allow list: if false;
+        allow create, update: if isValidId(businessId) && isValidId(counterName)
+          && isValidCounter(incoming())
+          && incoming().updatedAt == request.time
+          && isTenantMemberOrPlatform(businessId);
+        allow delete: if false;
+      }
+
+      // Deterministic Idempotency Keys (append-only, no enumeration)
+      match /idempotency/{keyId} {
+        allow get: if isValidId(businessId) && isValidId(keyId) && isTenantMemberOrPlatform(businessId);
+        allow list: if false;
+        allow create: if resource == null && isValidId(businessId) && isValidId(keyId)
+          && isValidIdempotency(incoming(), keyId)
+          && incoming().actorId == request.auth.uid
+          && incoming().createdAt == request.time
+          && isTenantMemberOrPlatform(businessId);
+        allow update, delete: if false;
+      }
+
+      // Atomic Resource Locks (active cash session & table occupancy)
+      match /locks/{lockId} {
+        allow get: if isValidId(businessId) && isValidId(lockId) && isTenantMemberOrPlatform(businessId);
+        allow list: if hasTenantPerm(businessId, 'tables.read') || hasTenantPerm(businessId, 'cash.access');
+        allow create: if resource == null && isValidId(businessId) && isValidId(lockId)
+          && isValidLock(incoming(), lockId)
+          && incoming().updatedAt == request.time
+          && (
+            (
+              lockId == 'activeCashSession'
+              && incoming().kind == 'cash_session'
+              && incoming().active == true
+              && hasTenantPerm(businessId, 'cash.open')
+            )
+            || (
+              lockId.matches('^table_[0-9]+$')
+              && !isRetail(businessId)
+              && incoming().kind == 'table'
+              && incoming().active == true
+              && (hasTenantPerm(businessId, 'orders.create') || hasTenantPerm(businessId, 'payments.receive'))
+            )
+          );
+        allow update: if resource != null && isValidId(businessId) && isValidId(lockId)
+          && isValidLock(incoming(), lockId)
+          && incoming().id == existing().id
+          && incoming().kind == existing().kind
+          && incoming().version == existing().version + 1
+          && incoming().updatedAt == request.time
+          && (
+            (
+              lockId == 'activeCashSession'
+              && (
+                (existing().active == false && incoming().active == true && hasTenantPerm(businessId, 'cash.open'))
+                || (existing().active == true && incoming().active == false && hasTenantPerm(businessId, 'cash.close'))
+              )
+            )
+            || (
+              lockId.matches('^table_[0-9]+$')
+              && (
+                (existing().active == false && incoming().active == true && !isRetail(businessId) && (hasTenantPerm(businessId, 'orders.create') || hasTenantPerm(businessId, 'payments.receive')))
+                || (existing().active == true && incoming().active == false && (hasTenantPerm(businessId, 'orders.deliver') || hasTenantPerm(businessId, 'orders.cancel') || hasTenantPerm(businessId, 'payments.receive')))
+              )
+            )
+          );
+        allow delete: if false;
+      }
+
+      // Support Tickets inside tenant
+      match /tickets/{ticketId} {
+        allow get: if isValidId(businessId) && isValidId(ticketId) && isTenantMemberOrPlatform(businessId);
+        allow list: if isTenantMemberOrPlatform(businessId);
+        allow create: if resource == null && isValidId(businessId) && isValidId(ticketId)
+          && isValidTicket(incoming(), businessId, ticketId)
+          && incoming().status == 'open'
+          && incoming().requesterUid == request.auth.uid
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && isBusinessMember(businessId);
+        allow update: if resource != null && isValidId(businessId) && isValidId(ticketId)
+          && isValidTicket(incoming(), businessId, ticketId)
+          && incoming().id == existing().id
+          && incoming().businessId == existing().businessId
+          && incoming().number == existing().number
+          && incoming().requestKey == existing().requestKey
+          && incoming().requesterUid == existing().requesterUid
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && (
+            (isPlatformAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'lastSupportAt', 'supportSeenAt', 'version', 'updatedAt']))
+            || (isBusinessMember(businessId) && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'lastCustomerAt', 'customerSeenAt', 'version', 'updatedAt']))
+          );
+        allow delete: if false;
+
+        match /messages/{messageId} {
+          allow get, list: if isTenantMemberOrPlatform(businessId);
+          allow create: if resource == null && isValidId(businessId) && isValidId(ticketId) && isValidId(messageId)
+            && isValidTicketMessage(incoming(), messageId)
+            && incoming().actorUid == request.auth.uid
+            && incoming().createdAt == request.time
+            && (
+              (isPlatformAdmin() && incoming().side == 'platform')
+              || (isBusinessMember(businessId) && incoming().side == 'customer')
+            );
+          allow update, delete: if false;
+        }
+      }
+    }
+  }
+}

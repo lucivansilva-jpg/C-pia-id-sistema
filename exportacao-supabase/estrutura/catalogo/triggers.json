@@ -1,0 +1,58 @@
+[
+  {
+    "name": "require_managed_registration",
+    "table": "users",
+    "schema": "auth",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER require_managed_registration BEFORE INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION app_internal.require_managed_registration()"
+  },
+  {
+    "name": "commerce_orders_guard",
+    "table": "orders",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER commerce_orders_guard BEFORE INSERT ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.orders FOR EACH ROW EXECUTE FUNCTION app_internal.commerce_guard()"
+  },
+  {
+    "name": "commerce_settings_guard",
+    "table": "settings",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER commerce_settings_guard BEFORE UPDATE OF business_kind ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.settings FOR EACH ROW EXECUTE FUNCTION app_internal.commerce_guard()"
+  },
+  {
+    "name": "commerce_stock_guard",
+    "table": "inventory_moves",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER commerce_stock_guard BEFORE INSERT ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.inventory_moves FOR EACH ROW EXECUTE FUNCTION app_internal.commerce_guard()"
+  },
+  {
+    "name": "commerce_orders_guard",
+    "table": "orders",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER commerce_orders_guard BEFORE INSERT ON erp_158cd9f8679545bba83ec3e98d19255b.orders FOR EACH ROW EXECUTE FUNCTION app_internal.commerce_guard()"
+  },
+  {
+    "name": "commerce_settings_guard",
+    "table": "settings",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER commerce_settings_guard BEFORE UPDATE OF business_kind ON erp_158cd9f8679545bba83ec3e98d19255b.settings FOR EACH ROW EXECUTE FUNCTION app_internal.commerce_guard()"
+  },
+  {
+    "name": "commerce_stock_guard",
+    "table": "inventory_moves",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER commerce_stock_guard BEFORE INSERT ON erp_158cd9f8679545bba83ec3e98d19255b.inventory_moves FOR EACH ROW EXECUTE FUNCTION app_internal.commerce_guard()"
+  },
+  {
+    "name": "business_alias_guard",
+    "table": "businesses",
+    "schema": "public",
+    "enabled": "O",
+    "definition": "CREATE TRIGGER business_alias_guard BEFORE INSERT OR UPDATE OF access_alias, code ON businesses FOR EACH ROW EXECUTE FUNCTION app_internal.business_alias_guard()"
+  }
+]

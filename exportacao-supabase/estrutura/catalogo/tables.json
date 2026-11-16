@@ -1,0 +1,542 @@
+[
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "business_presence",
+    "owner": "postgres",
+    "schema": "public",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "support_tickets",
+    "owner": "postgres",
+    "schema": "public",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "support_messages",
+    "owner": "postgres",
+    "schema": "public",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "support_email_outbox",
+    "owner": "postgres",
+    "schema": "public",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arw/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "customers",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=r/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "commerce_version",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arw/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "customers",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=r/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "commerce_version",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "business_deletions",
+    "owner": "postgres",
+    "schema": "public",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "business_members",
+    "owner": "postgres",
+    "schema": "public",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres,authenticated=r/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "business_profiles",
+    "owner": "postgres",
+    "schema": "public",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres,authenticated=r/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "businesses",
+    "owner": "postgres",
+    "schema": "public",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "auth_login_slots",
+    "owner": "postgres",
+    "schema": "public",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "platform_admins",
+    "owner": "postgres",
+    "schema": "public",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "platform_setup",
+    "owner": "postgres",
+    "schema": "public",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "support_sessions",
+    "owner": "postgres",
+    "schema": "public",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "access_audit",
+    "owner": "postgres",
+    "schema": "public",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres,supabase_auth_admin=rd/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "managed_registration_permits",
+    "owner": "postgres",
+    "schema": "public",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=ar/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "product_import_rows",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=ar/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "sale_return_lines",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arw/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "sale_returns",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=ar/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "product_import_rows",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=ar/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "sale_return_lines",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arw/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "sale_returns",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "employees",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "audit_log",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "dining_tables",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "media",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "role_profiles",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "favorites",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "inventory_items",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "inventory_moves",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "accounts",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "cash_sessions",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "suppliers",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "purchases",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "products",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "settings",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "orders",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "ledger",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "recipes",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "sale_drafts",
+    "owner": "postgres",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "settings",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "ledger",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "audit_log",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "dining_tables",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "employees",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "media",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "role_profiles",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "orders",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "favorites",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "inventory_items",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "inventory_moves",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "accounts",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "cash_sessions",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "suppliers",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "purchases",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "recipes",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "sale_drafts",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  },
+  {
+    "acl": "{postgres=arwdDxtm/postgres,service_role=arwdDxtm/postgres}",
+    "rls": true,
+    "kind": "r",
+    "name": "products",
+    "owner": "postgres",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "force_rls": false
+  }
+]

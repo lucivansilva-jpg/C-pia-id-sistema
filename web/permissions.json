@@ -1,0 +1,243 @@
+[
+  {
+    "id": "profile.read",
+    "label": "Consultar a própria identificação",
+    "roles": [
+      "admin",
+      "cashier",
+      "waiter"
+    ]
+  },
+  {
+    "id": "settings.read",
+    "label": "Consultar dados do estabelecimento",
+    "roles": [
+      "admin",
+      "cashier",
+      "waiter"
+    ]
+  },
+  {
+    "id": "settings.manage",
+    "label": "Alterar configurações do sistema",
+    "roles": [
+      "admin"
+    ]
+  },
+  {
+    "id": "catalog.read",
+    "label": "Consultar produtos e preços",
+    "roles": [
+      "admin",
+      "cashier",
+      "waiter"
+    ]
+  },
+  {
+    "id": "products.manage",
+    "label": "Cadastrar, editar e remover produtos",
+    "roles": [
+      "admin",
+      "cashier",
+      "waiter"
+    ]
+  },
+  {
+    "id": "products.costs",
+    "label": "Consultar e alterar custos",
+    "roles": [
+      "admin",
+      "cashier"
+    ]
+  },
+  {
+    "id": "tables.read",
+    "label": "Consultar mesas",
+    "roles": [
+      "admin",
+      "cashier",
+      "waiter"
+    ]
+  },
+  {
+    "id": "tables.manage",
+    "label": "Cadastrar mesas",
+    "roles": [
+      "admin",
+      "cashier",
+      "waiter"
+    ]
+  },
+  {
+    "id": "orders.read",
+    "label": "Consultar as próprias comandas",
+    "roles": [
+      "admin",
+      "cashier",
+      "waiter"
+    ]
+  },
+  {
+    "id": "orders.print",
+    "label": "Imprimir comanda, conferência e cupom",
+    "roles": [
+      "admin",
+      "cashier"
+    ]
+  },
+  {
+    "id": "orders.shared",
+    "label": "Consultar e atender comandas de outros funcionários",
+    "roles": [
+      "admin",
+      "cashier",
+      "waiter"
+    ]
+  },
+  {
+    "id": "orders.create",
+    "label": "Lançar pedidos e produtos",
+    "roles": [
+      "admin",
+      "cashier",
+      "waiter"
+    ]
+  },
+  {
+    "id": "orders.update",
+    "label": "Acrescentar itens nas comandas permitidas",
+    "roles": [
+      "admin",
+      "cashier",
+      "waiter"
+    ]
+  },
+  {
+    "id": "orders.deliver",
+    "label": "Marcar produtos como entregues",
+    "roles": [
+      "admin",
+      "cashier",
+      "waiter"
+    ]
+  },
+  {
+    "id": "orders.cancel",
+    "label": "Cancelar comanda com motivo",
+    "roles": [
+      "admin",
+      "cashier",
+      "waiter"
+    ]
+  },
+  {
+    "id": "drafts.manage",
+    "label": "Guardar e retomar vendas ainda não lançadas",
+    "roles": [
+      "admin",
+      "cashier",
+      "waiter"
+    ]
+  },
+  {
+    "id": "favorites.manage",
+    "label": "Organizar os próprios favoritos",
+    "roles": [
+      "admin",
+      "cashier",
+      "waiter"
+    ]
+  },
+  {
+    "id": "cash.access",
+    "label": "Acessar o PDV e consultar o caixa",
+    "roles": [
+      "admin",
+      "cashier"
+    ]
+  },
+  {
+    "id": "cash.open",
+    "label": "Abrir caixa",
+    "roles": [
+      "admin",
+      "cashier"
+    ]
+  },
+  {
+    "id": "cash.close",
+    "label": "Fechar e conferir caixa",
+    "roles": [
+      "admin",
+      "cashier"
+    ]
+  },
+  {
+    "id": "cash.movements",
+    "label": "Registrar suprimento e sangria",
+    "roles": [
+      "admin",
+      "cashier"
+    ]
+  },
+  {
+    "id": "payments.receive",
+    "label": "Receber, finalizar venda e colocar conta em espera",
+    "roles": [
+      "admin",
+      "cashier"
+    ]
+  },
+  {
+    "id": "payments.refund",
+    "label": "Registrar estorno com motivo e confirmação",
+    "roles": [
+      "admin",
+      "cashier"
+    ]
+  },
+  {
+    "id": "discounts.authorize",
+    "label": "Aplicar desconto com motivo",
+    "roles": [
+      "admin",
+      "cashier"
+    ]
+  },
+  {
+    "id": "expenses.create",
+    "label": "Lançar despesa paga pela gaveta",
+    "roles": [
+      "admin",
+      "cashier"
+    ]
+  },
+  {
+    "id": "finance.view",
+    "label": "Consultar financeiro gerencial",
+    "roles": [
+      "admin"
+    ]
+  },
+  {
+    "id": "finance.manage",
+    "label": "Gerenciar contas a pagar e receber",
+    "roles": [
+      "admin"
+    ]
+  },
+  {
+    "id": "reports.view",
+    "label": "Acessar relatórios, estoque, compras e fornecedores",
+    "roles": [
+      "admin"
+    ]
+  },
+  {
+    "id": "employees.manage",
+    "label": "Administrar funcionários, perfis e permissões",
+    "roles": [
+      "admin"
+    ]
+  }
+]

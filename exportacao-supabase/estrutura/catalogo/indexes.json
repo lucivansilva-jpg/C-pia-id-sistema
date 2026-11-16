@@ -1,0 +1,842 @@
+[
+  {
+    "name": "business_presence_pkey",
+    "table": "business_presence",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX business_presence_pkey ON public.business_presence USING btree (business_id, user_id)"
+  },
+  {
+    "name": "business_presence_recent",
+    "table": "business_presence",
+    "schema": "public",
+    "definition": "CREATE INDEX business_presence_recent ON public.business_presence USING btree (last_seen_at DESC)"
+  },
+  {
+    "name": "support_tickets_pkey",
+    "table": "support_tickets",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX support_tickets_pkey ON public.support_tickets USING btree (id)"
+  },
+  {
+    "name": "support_tickets_number_key",
+    "table": "support_tickets",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX support_tickets_number_key ON public.support_tickets USING btree (number)"
+  },
+  {
+    "name": "support_tickets_business_id_request_key_key",
+    "table": "support_tickets",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX support_tickets_business_id_request_key_key ON public.support_tickets USING btree (business_id, request_key)"
+  },
+  {
+    "name": "support_tickets_business_updated",
+    "table": "support_tickets",
+    "schema": "public",
+    "definition": "CREATE INDEX support_tickets_business_updated ON public.support_tickets USING btree (business_id, updated_at DESC)"
+  },
+  {
+    "name": "support_tickets_status_updated",
+    "table": "support_tickets",
+    "schema": "public",
+    "definition": "CREATE INDEX support_tickets_status_updated ON public.support_tickets USING btree (status, updated_at DESC)"
+  },
+  {
+    "name": "support_tickets_creator_recent",
+    "table": "support_tickets",
+    "schema": "public",
+    "definition": "CREATE INDEX support_tickets_creator_recent ON public.support_tickets USING btree (created_by, created_at DESC)"
+  },
+  {
+    "name": "support_messages_pkey",
+    "table": "support_messages",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX support_messages_pkey ON public.support_messages USING btree (id)"
+  },
+  {
+    "name": "support_messages_ticket_id_request_key_key",
+    "table": "support_messages",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX support_messages_ticket_id_request_key_key ON public.support_messages USING btree (ticket_id, request_key)"
+  },
+  {
+    "name": "support_messages_ticket_time",
+    "table": "support_messages",
+    "schema": "public",
+    "definition": "CREATE INDEX support_messages_ticket_time ON public.support_messages USING btree (ticket_id, created_at)"
+  },
+  {
+    "name": "support_email_outbox_pkey",
+    "table": "support_email_outbox",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX support_email_outbox_pkey ON public.support_email_outbox USING btree (id)"
+  },
+  {
+    "name": "support_email_outbox_message_id_key",
+    "table": "support_email_outbox",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX support_email_outbox_message_id_key ON public.support_email_outbox USING btree (message_id)"
+  },
+  {
+    "name": "support_email_pending",
+    "table": "support_email_outbox",
+    "schema": "public",
+    "definition": "CREATE INDEX support_email_pending ON public.support_email_outbox USING btree (status, created_at)"
+  },
+  {
+    "name": "customers_pkey",
+    "table": "customers",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX customers_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.customers USING btree (id)"
+  },
+  {
+    "name": "customers_name_idx",
+    "table": "customers",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE INDEX customers_name_idx ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.customers USING btree (name)"
+  },
+  {
+    "name": "customers_document_unique",
+    "table": "customers",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX customers_document_unique ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.customers USING btree (document) WHERE ((document <> ''::text) AND (active = 1))"
+  },
+  {
+    "name": "commerce_version_pkey",
+    "table": "commerce_version",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX commerce_version_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.commerce_version USING btree (version)"
+  },
+  {
+    "name": "customers_pkey",
+    "table": "customers",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX customers_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.customers USING btree (id)"
+  },
+  {
+    "name": "customers_name_idx",
+    "table": "customers",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE INDEX customers_name_idx ON erp_158cd9f8679545bba83ec3e98d19255b.customers USING btree (name)"
+  },
+  {
+    "name": "customers_document_unique",
+    "table": "customers",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX customers_document_unique ON erp_158cd9f8679545bba83ec3e98d19255b.customers USING btree (document) WHERE ((document <> ''::text) AND (active = 1))"
+  },
+  {
+    "name": "commerce_version_pkey",
+    "table": "commerce_version",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX commerce_version_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.commerce_version USING btree (version)"
+  },
+  {
+    "name": "business_deletions_pkey",
+    "table": "business_deletions",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX business_deletions_pkey ON public.business_deletions USING btree (id)"
+  },
+  {
+    "name": "business_members_pkey",
+    "table": "business_members",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX business_members_pkey ON public.business_members USING btree (user_id)"
+  },
+  {
+    "name": "business_members_business_id_username_key",
+    "table": "business_members",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX business_members_business_id_username_key ON public.business_members USING btree (business_id, username)"
+  },
+  {
+    "name": "business_members_business",
+    "table": "business_members",
+    "schema": "public",
+    "definition": "CREATE INDEX business_members_business ON public.business_members USING btree (business_id)"
+  },
+  {
+    "name": "business_profiles_pkey",
+    "table": "business_profiles",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX business_profiles_pkey ON public.business_profiles USING btree (business_id, role)"
+  },
+  {
+    "name": "businesses_pkey",
+    "table": "businesses",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX businesses_pkey ON public.businesses USING btree (id)"
+  },
+  {
+    "name": "businesses_code_key",
+    "table": "businesses",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX businesses_code_key ON public.businesses USING btree (code)"
+  },
+  {
+    "name": "businesses_owner_user_id_key",
+    "table": "businesses",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX businesses_owner_user_id_key ON public.businesses USING btree (owner_user_id)"
+  },
+  {
+    "name": "businesses_alias_unique",
+    "table": "businesses",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX businesses_alias_unique ON public.businesses USING btree (access_alias) WHERE (access_alias IS NOT NULL)"
+  },
+  {
+    "name": "auth_login_slots_pkey",
+    "table": "auth_login_slots",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX auth_login_slots_pkey ON public.auth_login_slots USING btree (slot_key)"
+  },
+  {
+    "name": "platform_admins_pkey",
+    "table": "platform_admins",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX platform_admins_pkey ON public.platform_admins USING btree (user_id)"
+  },
+  {
+    "name": "platform_admins_login_email_key",
+    "table": "platform_admins",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX platform_admins_login_email_key ON public.platform_admins USING btree (login_email)"
+  },
+  {
+    "name": "platform_setup_pkey",
+    "table": "platform_setup",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX platform_setup_pkey ON public.platform_setup USING btree (id)"
+  },
+  {
+    "name": "support_sessions_pkey",
+    "table": "support_sessions",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX support_sessions_pkey ON public.support_sessions USING btree (id)"
+  },
+  {
+    "name": "support_sessions_actor",
+    "table": "support_sessions",
+    "schema": "public",
+    "definition": "CREATE INDEX support_sessions_actor ON public.support_sessions USING btree (actor_id, created_at DESC)"
+  },
+  {
+    "name": "support_sessions_business",
+    "table": "support_sessions",
+    "schema": "public",
+    "definition": "CREATE INDEX support_sessions_business ON public.support_sessions USING btree (business_id, created_at DESC)"
+  },
+  {
+    "name": "access_audit_pkey",
+    "table": "access_audit",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX access_audit_pkey ON public.access_audit USING btree (id)"
+  },
+  {
+    "name": "access_audit_business",
+    "table": "access_audit",
+    "schema": "public",
+    "definition": "CREATE INDEX access_audit_business ON public.access_audit USING btree (business_id, created_at DESC)"
+  },
+  {
+    "name": "access_audit_actor",
+    "table": "access_audit",
+    "schema": "public",
+    "definition": "CREATE INDEX access_audit_actor ON public.access_audit USING btree (actor_id, created_at DESC)"
+  },
+  {
+    "name": "managed_registration_permits_pkey",
+    "table": "managed_registration_permits",
+    "schema": "public",
+    "definition": "CREATE UNIQUE INDEX managed_registration_permits_pkey ON public.managed_registration_permits USING btree (email)"
+  },
+  {
+    "name": "product_import_rows_pkey",
+    "table": "product_import_rows",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX product_import_rows_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.product_import_rows USING btree (request_key)"
+  },
+  {
+    "name": "sale_return_lines_pkey",
+    "table": "sale_return_lines",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX sale_return_lines_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.sale_return_lines USING btree (return_id, item_id)"
+  },
+  {
+    "name": "return_lines_item",
+    "table": "sale_return_lines",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE INDEX return_lines_item ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.sale_return_lines USING btree (item_id)"
+  },
+  {
+    "name": "sale_returns_pkey",
+    "table": "sale_returns",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX sale_returns_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.sale_returns USING btree (id)"
+  },
+  {
+    "name": "sale_returns_request_key_key",
+    "table": "sale_returns",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX sale_returns_request_key_key ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.sale_returns USING btree (request_key)"
+  },
+  {
+    "name": "returns_order",
+    "table": "sale_returns",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE INDEX returns_order ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.sale_returns USING btree (order_id)"
+  },
+  {
+    "name": "returns_created",
+    "table": "sale_returns",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE INDEX returns_created ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.sale_returns USING btree (created_at)"
+  },
+  {
+    "name": "product_import_rows_pkey",
+    "table": "product_import_rows",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX product_import_rows_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.product_import_rows USING btree (request_key)"
+  },
+  {
+    "name": "sale_return_lines_pkey",
+    "table": "sale_return_lines",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX sale_return_lines_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.sale_return_lines USING btree (return_id, item_id)"
+  },
+  {
+    "name": "return_lines_item",
+    "table": "sale_return_lines",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE INDEX return_lines_item ON erp_158cd9f8679545bba83ec3e98d19255b.sale_return_lines USING btree (item_id)"
+  },
+  {
+    "name": "sale_returns_pkey",
+    "table": "sale_returns",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX sale_returns_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.sale_returns USING btree (id)"
+  },
+  {
+    "name": "sale_returns_request_key_key",
+    "table": "sale_returns",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX sale_returns_request_key_key ON erp_158cd9f8679545bba83ec3e98d19255b.sale_returns USING btree (request_key)"
+  },
+  {
+    "name": "returns_order",
+    "table": "sale_returns",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE INDEX returns_order ON erp_158cd9f8679545bba83ec3e98d19255b.sale_returns USING btree (order_id)"
+  },
+  {
+    "name": "returns_created",
+    "table": "sale_returns",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE INDEX returns_created ON erp_158cd9f8679545bba83ec3e98d19255b.sale_returns USING btree (created_at)"
+  },
+  {
+    "name": "employees_pkey",
+    "table": "employees",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX employees_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.employees USING btree (id)"
+  },
+  {
+    "name": "employees_username_unique",
+    "table": "employees",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX employees_username_unique ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.employees USING btree (username)"
+  },
+  {
+    "name": "audit_log_pkey",
+    "table": "audit_log",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX audit_log_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.audit_log USING btree (id)"
+  },
+  {
+    "name": "audit_created",
+    "table": "audit_log",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE INDEX audit_created ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.audit_log USING btree (created_at)"
+  },
+  {
+    "name": "dining_tables_pkey",
+    "table": "dining_tables",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX dining_tables_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.dining_tables USING btree (id)"
+  },
+  {
+    "name": "dining_tables_number_unique",
+    "table": "dining_tables",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX dining_tables_number_unique ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.dining_tables USING btree (number)"
+  },
+  {
+    "name": "media_pkey",
+    "table": "media",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX media_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.media USING btree (key)"
+  },
+  {
+    "name": "role_profiles_pkey",
+    "table": "role_profiles",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX role_profiles_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.role_profiles USING btree (role)"
+  },
+  {
+    "name": "favorites_pkey",
+    "table": "favorites",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX favorites_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.favorites USING btree (user_id, product_id)"
+  },
+  {
+    "name": "inventory_items_pkey",
+    "table": "inventory_items",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX inventory_items_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.inventory_items USING btree (id)"
+  },
+  {
+    "name": "inventory_moves_pkey",
+    "table": "inventory_moves",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX inventory_moves_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.inventory_moves USING btree (id)"
+  },
+  {
+    "name": "inventory_item_moves",
+    "table": "inventory_moves",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE INDEX inventory_item_moves ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.inventory_moves USING btree (item_id)"
+  },
+  {
+    "name": "inventory_moves_request_key_unique",
+    "table": "inventory_moves",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX inventory_moves_request_key_unique ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.inventory_moves USING btree (request_key)"
+  },
+  {
+    "name": "accounts_pkey",
+    "table": "accounts",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX accounts_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.accounts USING btree (id)"
+  },
+  {
+    "name": "accounts_source_payment_id_unique",
+    "table": "accounts",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX accounts_source_payment_id_unique ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.accounts USING btree (source_payment_id)"
+  },
+  {
+    "name": "accounts_recurrence_parent_id_unique",
+    "table": "accounts",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX accounts_recurrence_parent_id_unique ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.accounts USING btree (recurrence_parent_id)"
+  },
+  {
+    "name": "accounts_request_key_unique",
+    "table": "accounts",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX accounts_request_key_unique ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.accounts USING btree (request_key)"
+  },
+  {
+    "name": "cash_sessions_pkey",
+    "table": "cash_sessions",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX cash_sessions_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.cash_sessions USING btree (id)"
+  },
+  {
+    "name": "cash_one_open",
+    "table": "cash_sessions",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX cash_one_open ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.cash_sessions USING btree (state) WHERE (state = 'open'::text)"
+  },
+  {
+    "name": "suppliers_pkey",
+    "table": "suppliers",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX suppliers_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.suppliers USING btree (id)"
+  },
+  {
+    "name": "purchases_pkey",
+    "table": "purchases",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX purchases_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.purchases USING btree (id)"
+  },
+  {
+    "name": "purchases_request_key_unique",
+    "table": "purchases",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX purchases_request_key_unique ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.purchases USING btree (request_key)"
+  },
+  {
+    "name": "products_pkey",
+    "table": "products",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX products_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.products USING btree (id)"
+  },
+  {
+    "name": "products_code_unique",
+    "table": "products",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX products_code_unique ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.products USING btree (code)"
+  },
+  {
+    "name": "products_active_name",
+    "table": "products",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE INDEX products_active_name ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.products USING btree (active, name)"
+  },
+  {
+    "name": "products_barcode_unique",
+    "table": "products",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX products_barcode_unique ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.products USING btree (barcode) WHERE (barcode IS NOT NULL)"
+  },
+  {
+    "name": "settings_pkey",
+    "table": "settings",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX settings_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.settings USING btree (id)"
+  },
+  {
+    "name": "orders_pkey",
+    "table": "orders",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX orders_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.orders USING btree (number)"
+  },
+  {
+    "name": "one_active_table",
+    "table": "orders",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX one_active_table ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.orders USING btree (table_number) WHERE ((table_number IS NOT NULL) AND ((state = 'open'::text) OR (fulfillment <> 'delivered'::text)))"
+  },
+  {
+    "name": "orders_state",
+    "table": "orders",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE INDEX orders_state ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.orders USING btree (state)"
+  },
+  {
+    "name": "orders_request_key_unique",
+    "table": "orders",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX orders_request_key_unique ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.orders USING btree (request_key)"
+  },
+  {
+    "name": "orders_id_unique",
+    "table": "orders",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX orders_id_unique ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.orders USING btree (id)"
+  },
+  {
+    "name": "orders_customer_idx",
+    "table": "orders",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE INDEX orders_customer_idx ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.orders USING btree (customer_id)"
+  },
+  {
+    "name": "ledger_pkey",
+    "table": "ledger",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX ledger_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.ledger USING btree (id)"
+  },
+  {
+    "name": "ledger_order",
+    "table": "ledger",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE INDEX ledger_order ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.ledger USING btree (order_id)"
+  },
+  {
+    "name": "ledger_session",
+    "table": "ledger",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE INDEX ledger_session ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.ledger USING btree (session_id)"
+  },
+  {
+    "name": "ledger_account_id_unique",
+    "table": "ledger",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX ledger_account_id_unique ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.ledger USING btree (account_id)"
+  },
+  {
+    "name": "ledger_request_key_unique",
+    "table": "ledger",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX ledger_request_key_unique ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.ledger USING btree (request_key)"
+  },
+  {
+    "name": "recipes_pkey",
+    "table": "recipes",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX recipes_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.recipes USING btree (product_id, item_id)"
+  },
+  {
+    "name": "sale_drafts_pkey",
+    "table": "sale_drafts",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX sale_drafts_pkey ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.sale_drafts USING btree (id)"
+  },
+  {
+    "name": "drafts_owner_state",
+    "table": "sale_drafts",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE INDEX drafts_owner_state ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.sale_drafts USING btree (owner_id, state)"
+  },
+  {
+    "name": "sale_drafts_request_key_unique",
+    "table": "sale_drafts",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CREATE UNIQUE INDEX sale_drafts_request_key_unique ON erp_d9c47d63ff104ff6b4c92a2b3e71ace9.sale_drafts USING btree (request_key)"
+  },
+  {
+    "name": "settings_pkey",
+    "table": "settings",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX settings_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.settings USING btree (id)"
+  },
+  {
+    "name": "ledger_pkey",
+    "table": "ledger",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX ledger_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.ledger USING btree (id)"
+  },
+  {
+    "name": "ledger_order",
+    "table": "ledger",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE INDEX ledger_order ON erp_158cd9f8679545bba83ec3e98d19255b.ledger USING btree (order_id)"
+  },
+  {
+    "name": "ledger_session",
+    "table": "ledger",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE INDEX ledger_session ON erp_158cd9f8679545bba83ec3e98d19255b.ledger USING btree (session_id)"
+  },
+  {
+    "name": "ledger_account_id_unique",
+    "table": "ledger",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX ledger_account_id_unique ON erp_158cd9f8679545bba83ec3e98d19255b.ledger USING btree (account_id)"
+  },
+  {
+    "name": "ledger_request_key_unique",
+    "table": "ledger",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX ledger_request_key_unique ON erp_158cd9f8679545bba83ec3e98d19255b.ledger USING btree (request_key)"
+  },
+  {
+    "name": "audit_log_pkey",
+    "table": "audit_log",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX audit_log_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.audit_log USING btree (id)"
+  },
+  {
+    "name": "audit_created",
+    "table": "audit_log",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE INDEX audit_created ON erp_158cd9f8679545bba83ec3e98d19255b.audit_log USING btree (created_at)"
+  },
+  {
+    "name": "dining_tables_pkey",
+    "table": "dining_tables",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX dining_tables_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.dining_tables USING btree (id)"
+  },
+  {
+    "name": "dining_tables_number_unique",
+    "table": "dining_tables",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX dining_tables_number_unique ON erp_158cd9f8679545bba83ec3e98d19255b.dining_tables USING btree (number)"
+  },
+  {
+    "name": "employees_pkey",
+    "table": "employees",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX employees_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.employees USING btree (id)"
+  },
+  {
+    "name": "employees_username_unique",
+    "table": "employees",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX employees_username_unique ON erp_158cd9f8679545bba83ec3e98d19255b.employees USING btree (username)"
+  },
+  {
+    "name": "media_pkey",
+    "table": "media",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX media_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.media USING btree (key)"
+  },
+  {
+    "name": "role_profiles_pkey",
+    "table": "role_profiles",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX role_profiles_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.role_profiles USING btree (role)"
+  },
+  {
+    "name": "orders_pkey",
+    "table": "orders",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX orders_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.orders USING btree (number)"
+  },
+  {
+    "name": "one_active_table",
+    "table": "orders",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX one_active_table ON erp_158cd9f8679545bba83ec3e98d19255b.orders USING btree (table_number) WHERE ((table_number IS NOT NULL) AND ((state = 'open'::text) OR (fulfillment <> 'delivered'::text)))"
+  },
+  {
+    "name": "orders_state",
+    "table": "orders",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE INDEX orders_state ON erp_158cd9f8679545bba83ec3e98d19255b.orders USING btree (state)"
+  },
+  {
+    "name": "orders_request_key_unique",
+    "table": "orders",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX orders_request_key_unique ON erp_158cd9f8679545bba83ec3e98d19255b.orders USING btree (request_key)"
+  },
+  {
+    "name": "orders_id_unique",
+    "table": "orders",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX orders_id_unique ON erp_158cd9f8679545bba83ec3e98d19255b.orders USING btree (id)"
+  },
+  {
+    "name": "orders_customer_idx",
+    "table": "orders",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE INDEX orders_customer_idx ON erp_158cd9f8679545bba83ec3e98d19255b.orders USING btree (customer_id)"
+  },
+  {
+    "name": "favorites_pkey",
+    "table": "favorites",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX favorites_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.favorites USING btree (user_id, product_id)"
+  },
+  {
+    "name": "inventory_items_pkey",
+    "table": "inventory_items",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX inventory_items_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.inventory_items USING btree (id)"
+  },
+  {
+    "name": "inventory_moves_pkey",
+    "table": "inventory_moves",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX inventory_moves_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.inventory_moves USING btree (id)"
+  },
+  {
+    "name": "inventory_item_moves",
+    "table": "inventory_moves",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE INDEX inventory_item_moves ON erp_158cd9f8679545bba83ec3e98d19255b.inventory_moves USING btree (item_id)"
+  },
+  {
+    "name": "inventory_moves_request_key_unique",
+    "table": "inventory_moves",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX inventory_moves_request_key_unique ON erp_158cd9f8679545bba83ec3e98d19255b.inventory_moves USING btree (request_key)"
+  },
+  {
+    "name": "accounts_pkey",
+    "table": "accounts",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX accounts_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.accounts USING btree (id)"
+  },
+  {
+    "name": "accounts_source_payment_id_unique",
+    "table": "accounts",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX accounts_source_payment_id_unique ON erp_158cd9f8679545bba83ec3e98d19255b.accounts USING btree (source_payment_id)"
+  },
+  {
+    "name": "accounts_recurrence_parent_id_unique",
+    "table": "accounts",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX accounts_recurrence_parent_id_unique ON erp_158cd9f8679545bba83ec3e98d19255b.accounts USING btree (recurrence_parent_id)"
+  },
+  {
+    "name": "accounts_request_key_unique",
+    "table": "accounts",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX accounts_request_key_unique ON erp_158cd9f8679545bba83ec3e98d19255b.accounts USING btree (request_key)"
+  },
+  {
+    "name": "cash_sessions_pkey",
+    "table": "cash_sessions",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX cash_sessions_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.cash_sessions USING btree (id)"
+  },
+  {
+    "name": "cash_one_open",
+    "table": "cash_sessions",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX cash_one_open ON erp_158cd9f8679545bba83ec3e98d19255b.cash_sessions USING btree (state) WHERE (state = 'open'::text)"
+  },
+  {
+    "name": "suppliers_pkey",
+    "table": "suppliers",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX suppliers_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.suppliers USING btree (id)"
+  },
+  {
+    "name": "purchases_pkey",
+    "table": "purchases",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX purchases_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.purchases USING btree (id)"
+  },
+  {
+    "name": "purchases_request_key_unique",
+    "table": "purchases",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX purchases_request_key_unique ON erp_158cd9f8679545bba83ec3e98d19255b.purchases USING btree (request_key)"
+  },
+  {
+    "name": "recipes_pkey",
+    "table": "recipes",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX recipes_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.recipes USING btree (product_id, item_id)"
+  },
+  {
+    "name": "sale_drafts_pkey",
+    "table": "sale_drafts",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX sale_drafts_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.sale_drafts USING btree (id)"
+  },
+  {
+    "name": "drafts_owner_state",
+    "table": "sale_drafts",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE INDEX drafts_owner_state ON erp_158cd9f8679545bba83ec3e98d19255b.sale_drafts USING btree (owner_id, state)"
+  },
+  {
+    "name": "sale_drafts_request_key_unique",
+    "table": "sale_drafts",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX sale_drafts_request_key_unique ON erp_158cd9f8679545bba83ec3e98d19255b.sale_drafts USING btree (request_key)"
+  },
+  {
+    "name": "products_pkey",
+    "table": "products",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX products_pkey ON erp_158cd9f8679545bba83ec3e98d19255b.products USING btree (id)"
+  },
+  {
+    "name": "products_code_unique",
+    "table": "products",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX products_code_unique ON erp_158cd9f8679545bba83ec3e98d19255b.products USING btree (code)"
+  },
+  {
+    "name": "products_active_name",
+    "table": "products",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE INDEX products_active_name ON erp_158cd9f8679545bba83ec3e98d19255b.products USING btree (active, name)"
+  },
+  {
+    "name": "products_barcode_unique",
+    "table": "products",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CREATE UNIQUE INDEX products_barcode_unique ON erp_158cd9f8679545bba83ec3e98d19255b.products USING btree (barcode) WHERE (barcode IS NOT NULL)"
+  }
+]

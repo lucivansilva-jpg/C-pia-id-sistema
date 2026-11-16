@@ -1,0 +1,1262 @@
+[
+  {
+    "name": "businesses_name_check",
+    "type": "c",
+    "table": "businesses",
+    "schema": "public",
+    "definition": "CHECK (char_length(name) >= 1 AND char_length(name) <= 100)"
+  },
+  {
+    "name": "businesses_pkey",
+    "type": "p",
+    "table": "businesses",
+    "schema": "public",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "businesses_code_key",
+    "type": "u",
+    "table": "businesses",
+    "schema": "public",
+    "definition": "UNIQUE (code)"
+  },
+  {
+    "name": "businesses_owner_user_id_key",
+    "type": "u",
+    "table": "businesses",
+    "schema": "public",
+    "definition": "UNIQUE (owner_user_id)"
+  },
+  {
+    "name": "businesses_owner_user_id_fkey",
+    "type": "f",
+    "table": "businesses",
+    "schema": "public",
+    "definition": "FOREIGN KEY (owner_user_id) REFERENCES auth.users(id)"
+  },
+  {
+    "name": "business_profiles_role_check",
+    "type": "c",
+    "table": "business_profiles",
+    "schema": "public",
+    "definition": "CHECK (role = ANY (ARRAY['admin'::text, 'cashier'::text, 'waiter'::text]))"
+  },
+  {
+    "name": "business_profiles_permissions_check",
+    "type": "c",
+    "table": "business_profiles",
+    "schema": "public",
+    "definition": "CHECK (jsonb_typeof(permissions) = 'object'::text)"
+  },
+  {
+    "name": "business_profiles_pkey",
+    "type": "p",
+    "table": "business_profiles",
+    "schema": "public",
+    "definition": "PRIMARY KEY (business_id, role)"
+  },
+  {
+    "name": "business_profiles_business_id_fkey",
+    "type": "f",
+    "table": "business_profiles",
+    "schema": "public",
+    "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE"
+  },
+  {
+    "name": "business_members_role_check",
+    "type": "c",
+    "table": "business_members",
+    "schema": "public",
+    "definition": "CHECK (role = ANY (ARRAY['admin'::text, 'cashier'::text, 'waiter'::text]))"
+  },
+  {
+    "name": "business_members_permissions_check",
+    "type": "c",
+    "table": "business_members",
+    "schema": "public",
+    "definition": "CHECK (jsonb_typeof(permissions) = 'object'::text)"
+  },
+  {
+    "name": "business_members_username_check",
+    "type": "c",
+    "table": "business_members",
+    "schema": "public",
+    "definition": "CHECK (username IS NULL OR username ~ '^[a-z0-9][a-z0-9._-]{2,39}$'::text)"
+  },
+  {
+    "name": "business_members_pkey",
+    "type": "p",
+    "table": "business_members",
+    "schema": "public",
+    "definition": "PRIMARY KEY (user_id)"
+  },
+  {
+    "name": "business_members_business_id_username_key",
+    "type": "u",
+    "table": "business_members",
+    "schema": "public",
+    "definition": "UNIQUE (business_id, username)"
+  },
+  {
+    "name": "business_members_user_id_fkey",
+    "type": "f",
+    "table": "business_members",
+    "schema": "public",
+    "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+  },
+  {
+    "name": "business_members_business_id_fkey",
+    "type": "f",
+    "table": "business_members",
+    "schema": "public",
+    "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE"
+  },
+  {
+    "name": "business_members_business_id_role_fkey",
+    "type": "f",
+    "table": "business_members",
+    "schema": "public",
+    "definition": "FOREIGN KEY (business_id, role) REFERENCES business_profiles(business_id, role)"
+  },
+  {
+    "name": "auth_login_slots_pkey",
+    "type": "p",
+    "table": "auth_login_slots",
+    "schema": "public",
+    "definition": "PRIMARY KEY (slot_key)"
+  },
+  {
+    "name": "platform_admins_pkey",
+    "type": "p",
+    "table": "platform_admins",
+    "schema": "public",
+    "definition": "PRIMARY KEY (user_id)"
+  },
+  {
+    "name": "platform_admins_user_id_fkey",
+    "type": "f",
+    "table": "platform_admins",
+    "schema": "public",
+    "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id)"
+  },
+  {
+    "name": "platform_setup_id_check",
+    "type": "c",
+    "table": "platform_setup",
+    "schema": "public",
+    "definition": "CHECK (id = 1)"
+  },
+  {
+    "name": "platform_setup_pkey",
+    "type": "p",
+    "table": "platform_setup",
+    "schema": "public",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "support_sessions_purpose_check",
+    "type": "c",
+    "table": "support_sessions",
+    "schema": "public",
+    "definition": "CHECK (char_length(purpose) >= 5 AND char_length(purpose) <= 500)"
+  },
+  {
+    "name": "support_sessions_pkey",
+    "type": "p",
+    "table": "support_sessions",
+    "schema": "public",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "support_sessions_actor_id_fkey",
+    "type": "f",
+    "table": "support_sessions",
+    "schema": "public",
+    "definition": "FOREIGN KEY (actor_id) REFERENCES platform_admins(user_id)"
+  },
+  {
+    "name": "support_sessions_business_id_fkey",
+    "type": "f",
+    "table": "support_sessions",
+    "schema": "public",
+    "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id)"
+  },
+  {
+    "name": "access_audit_pkey",
+    "type": "p",
+    "table": "access_audit",
+    "schema": "public",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "access_audit_actor_id_fkey",
+    "type": "f",
+    "table": "access_audit",
+    "schema": "public",
+    "definition": "FOREIGN KEY (actor_id) REFERENCES auth.users(id)"
+  },
+  {
+    "name": "access_audit_business_id_fkey",
+    "type": "f",
+    "table": "access_audit",
+    "schema": "public",
+    "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id)"
+  },
+  {
+    "name": "access_audit_support_session_id_fkey",
+    "type": "f",
+    "table": "access_audit",
+    "schema": "public",
+    "definition": "FOREIGN KEY (support_session_id) REFERENCES support_sessions(id)"
+  },
+  {
+    "name": "managed_registration_permits_pkey",
+    "type": "p",
+    "table": "managed_registration_permits",
+    "schema": "public",
+    "definition": "PRIMARY KEY (email)"
+  },
+  {
+    "name": "platform_admins_login_email_key",
+    "type": "u",
+    "table": "platform_admins",
+    "schema": "public",
+    "definition": "UNIQUE (login_email)"
+  },
+  {
+    "name": "accounts_pkey",
+    "type": "p",
+    "table": "accounts",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "audit_log_pkey",
+    "type": "p",
+    "table": "audit_log",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "cash_opening",
+    "type": "c",
+    "table": "cash_sessions",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CHECK (opening_cents >= 0)"
+  },
+  {
+    "name": "cash_sessions_pkey",
+    "type": "p",
+    "table": "cash_sessions",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "favorites_product_id_fkey",
+    "type": "f",
+    "table": "favorites",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "FOREIGN KEY (product_id) REFERENCES erp_158cd9f8679545bba83ec3e98d19255b.products(id)"
+  },
+  {
+    "name": "table_number",
+    "type": "c",
+    "table": "dining_tables",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CHECK (number > 0)"
+  },
+  {
+    "name": "table_seats",
+    "type": "c",
+    "table": "dining_tables",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CHECK (seats IS NULL OR seats > 0)"
+  },
+  {
+    "name": "dining_tables_pkey",
+    "type": "p",
+    "table": "dining_tables",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "employee_role",
+    "type": "c",
+    "table": "employees",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CHECK (role = ANY (ARRAY['waiter'::text, 'cashier'::text, 'admin'::text]))"
+  },
+  {
+    "name": "employees_pkey",
+    "type": "p",
+    "table": "employees",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "favorites_pkey",
+    "type": "p",
+    "table": "favorites",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (user_id, product_id)"
+  },
+  {
+    "name": "inventory_items_pkey",
+    "type": "p",
+    "table": "inventory_items",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "stock_qty_nonzero",
+    "type": "c",
+    "table": "inventory_moves",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CHECK (quantity_milli <> 0)"
+  },
+  {
+    "name": "inventory_moves_pkey",
+    "type": "p",
+    "table": "inventory_moves",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "ledger_pkey",
+    "type": "p",
+    "table": "ledger",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "media_pkey",
+    "type": "p",
+    "table": "media",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (key)"
+  },
+  {
+    "name": "orders_pkey",
+    "type": "p",
+    "table": "orders",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (number)"
+  },
+  {
+    "name": "price_nonnegative",
+    "type": "c",
+    "table": "products",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CHECK (price_cents >= 0)"
+  },
+  {
+    "name": "cost_nonnegative",
+    "type": "c",
+    "table": "products",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CHECK (cost_cents IS NULL OR cost_cents >= 0)"
+  },
+  {
+    "name": "product_flags",
+    "type": "c",
+    "table": "products",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CHECK ((active = ANY (ARRAY[0::bigint, 1::bigint])) AND (available = ANY (ARRAY[0::bigint, 1::bigint])) AND (visible = ANY (ARRAY[0::bigint, 1::bigint])))"
+  },
+  {
+    "name": "products_pkey",
+    "type": "p",
+    "table": "products",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "purchases_pkey",
+    "type": "p",
+    "table": "purchases",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "recipe_qty_positive",
+    "type": "c",
+    "table": "recipes",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CHECK (quantity_milli > 0)"
+  },
+  {
+    "name": "recipes_pkey",
+    "type": "p",
+    "table": "recipes",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (product_id, item_id)"
+  },
+  {
+    "name": "inventory_moves_item_id_fkey",
+    "type": "f",
+    "table": "inventory_moves",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "FOREIGN KEY (item_id) REFERENCES erp_158cd9f8679545bba83ec3e98d19255b.inventory_items(id)"
+  },
+  {
+    "name": "ledger_account_id_fkey",
+    "type": "f",
+    "table": "ledger",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "FOREIGN KEY (account_id) REFERENCES erp_158cd9f8679545bba83ec3e98d19255b.accounts(id)"
+  },
+  {
+    "name": "profile_role",
+    "type": "c",
+    "table": "role_profiles",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CHECK (role = ANY (ARRAY['admin'::text, 'cashier'::text, 'waiter'::text]))"
+  },
+  {
+    "name": "role_profiles_pkey",
+    "type": "p",
+    "table": "role_profiles",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (role)"
+  },
+  {
+    "name": "sale_drafts_pkey",
+    "type": "p",
+    "table": "sale_drafts",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "settings_single",
+    "type": "c",
+    "table": "settings",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CHECK (id = 1)"
+  },
+  {
+    "name": "settings_pkey",
+    "type": "p",
+    "table": "settings",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "suppliers_pkey",
+    "type": "p",
+    "table": "suppliers",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "favorites_product_id_fkey",
+    "type": "f",
+    "table": "favorites",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "FOREIGN KEY (product_id) REFERENCES erp_d9c47d63ff104ff6b4c92a2b3e71ace9.products(id)"
+  },
+  {
+    "name": "inventory_moves_item_id_fkey",
+    "type": "f",
+    "table": "inventory_moves",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "FOREIGN KEY (item_id) REFERENCES erp_d9c47d63ff104ff6b4c92a2b3e71ace9.inventory_items(id)"
+  },
+  {
+    "name": "ledger_account_id_fkey",
+    "type": "f",
+    "table": "ledger",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "FOREIGN KEY (account_id) REFERENCES erp_d9c47d63ff104ff6b4c92a2b3e71ace9.accounts(id)"
+  },
+  {
+    "name": "ledger_order_id_fkey",
+    "type": "f",
+    "table": "ledger",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "FOREIGN KEY (order_id) REFERENCES erp_d9c47d63ff104ff6b4c92a2b3e71ace9.orders(id)"
+  },
+  {
+    "name": "ledger_session_id_fkey",
+    "type": "f",
+    "table": "ledger",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "FOREIGN KEY (session_id) REFERENCES erp_d9c47d63ff104ff6b4c92a2b3e71ace9.cash_sessions(id)"
+  },
+  {
+    "name": "purchases_supplier_id_fkey",
+    "type": "f",
+    "table": "purchases",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "FOREIGN KEY (supplier_id) REFERENCES erp_d9c47d63ff104ff6b4c92a2b3e71ace9.suppliers(id)"
+  },
+  {
+    "name": "recipes_item_id_fkey",
+    "type": "f",
+    "table": "recipes",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "FOREIGN KEY (item_id) REFERENCES erp_d9c47d63ff104ff6b4c92a2b3e71ace9.inventory_items(id)"
+  },
+  {
+    "name": "recipes_product_id_fkey",
+    "type": "f",
+    "table": "recipes",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "FOREIGN KEY (product_id) REFERENCES erp_d9c47d63ff104ff6b4c92a2b3e71ace9.products(id)"
+  },
+  {
+    "name": "sale_drafts_converted_order_id_fkey",
+    "type": "f",
+    "table": "sale_drafts",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "FOREIGN KEY (converted_order_id) REFERENCES erp_d9c47d63ff104ff6b4c92a2b3e71ace9.orders(id)"
+  },
+  {
+    "name": "accounts_pkey",
+    "type": "p",
+    "table": "accounts",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "audit_log_pkey",
+    "type": "p",
+    "table": "audit_log",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "cash_opening",
+    "type": "c",
+    "table": "cash_sessions",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CHECK (opening_cents >= 0)"
+  },
+  {
+    "name": "cash_sessions_pkey",
+    "type": "p",
+    "table": "cash_sessions",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "table_number",
+    "type": "c",
+    "table": "dining_tables",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CHECK (number > 0)"
+  },
+  {
+    "name": "table_seats",
+    "type": "c",
+    "table": "dining_tables",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CHECK (seats IS NULL OR seats > 0)"
+  },
+  {
+    "name": "dining_tables_pkey",
+    "type": "p",
+    "table": "dining_tables",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "ledger_order_id_fkey",
+    "type": "f",
+    "table": "ledger",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "FOREIGN KEY (order_id) REFERENCES erp_158cd9f8679545bba83ec3e98d19255b.orders(id)"
+  },
+  {
+    "name": "ledger_session_id_fkey",
+    "type": "f",
+    "table": "ledger",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "FOREIGN KEY (session_id) REFERENCES erp_158cd9f8679545bba83ec3e98d19255b.cash_sessions(id)"
+  },
+  {
+    "name": "purchases_supplier_id_fkey",
+    "type": "f",
+    "table": "purchases",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "FOREIGN KEY (supplier_id) REFERENCES erp_158cd9f8679545bba83ec3e98d19255b.suppliers(id)"
+  },
+  {
+    "name": "employee_role",
+    "type": "c",
+    "table": "employees",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CHECK (role = ANY (ARRAY['waiter'::text, 'cashier'::text, 'admin'::text]))"
+  },
+  {
+    "name": "employees_pkey",
+    "type": "p",
+    "table": "employees",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "favorites_pkey",
+    "type": "p",
+    "table": "favorites",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (user_id, product_id)"
+  },
+  {
+    "name": "inventory_items_pkey",
+    "type": "p",
+    "table": "inventory_items",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "stock_qty_nonzero",
+    "type": "c",
+    "table": "inventory_moves",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CHECK (quantity_milli <> 0)"
+  },
+  {
+    "name": "inventory_moves_pkey",
+    "type": "p",
+    "table": "inventory_moves",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "ledger_pkey",
+    "type": "p",
+    "table": "ledger",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "media_pkey",
+    "type": "p",
+    "table": "media",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (key)"
+  },
+  {
+    "name": "orders_pkey",
+    "type": "p",
+    "table": "orders",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (number)"
+  },
+  {
+    "name": "price_nonnegative",
+    "type": "c",
+    "table": "products",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CHECK (price_cents >= 0)"
+  },
+  {
+    "name": "cost_nonnegative",
+    "type": "c",
+    "table": "products",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CHECK (cost_cents IS NULL OR cost_cents >= 0)"
+  },
+  {
+    "name": "product_flags",
+    "type": "c",
+    "table": "products",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CHECK ((active = ANY (ARRAY[0::bigint, 1::bigint])) AND (available = ANY (ARRAY[0::bigint, 1::bigint])) AND (visible = ANY (ARRAY[0::bigint, 1::bigint])))"
+  },
+  {
+    "name": "products_pkey",
+    "type": "p",
+    "table": "products",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "purchases_pkey",
+    "type": "p",
+    "table": "purchases",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "recipe_qty_positive",
+    "type": "c",
+    "table": "recipes",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CHECK (quantity_milli > 0)"
+  },
+  {
+    "name": "recipes_pkey",
+    "type": "p",
+    "table": "recipes",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (product_id, item_id)"
+  },
+  {
+    "name": "profile_role",
+    "type": "c",
+    "table": "role_profiles",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CHECK (role = ANY (ARRAY['admin'::text, 'cashier'::text, 'waiter'::text]))"
+  },
+  {
+    "name": "role_profiles_pkey",
+    "type": "p",
+    "table": "role_profiles",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (role)"
+  },
+  {
+    "name": "sale_drafts_pkey",
+    "type": "p",
+    "table": "sale_drafts",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "settings_single",
+    "type": "c",
+    "table": "settings",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CHECK (id = 1)"
+  },
+  {
+    "name": "settings_pkey",
+    "type": "p",
+    "table": "settings",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "suppliers_pkey",
+    "type": "p",
+    "table": "suppliers",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "recipes_item_id_fkey",
+    "type": "f",
+    "table": "recipes",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "FOREIGN KEY (item_id) REFERENCES erp_158cd9f8679545bba83ec3e98d19255b.inventory_items(id)"
+  },
+  {
+    "name": "recipes_product_id_fkey",
+    "type": "f",
+    "table": "recipes",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "FOREIGN KEY (product_id) REFERENCES erp_158cd9f8679545bba83ec3e98d19255b.products(id)"
+  },
+  {
+    "name": "sale_drafts_converted_order_id_fkey",
+    "type": "f",
+    "table": "sale_drafts",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "FOREIGN KEY (converted_order_id) REFERENCES erp_158cd9f8679545bba83ec3e98d19255b.orders(id)"
+  },
+  {
+    "name": "business_presence_pkey",
+    "type": "p",
+    "table": "business_presence",
+    "schema": "public",
+    "definition": "PRIMARY KEY (business_id, user_id)"
+  },
+  {
+    "name": "business_presence_business_id_fkey",
+    "type": "f",
+    "table": "business_presence",
+    "schema": "public",
+    "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id)"
+  },
+  {
+    "name": "business_presence_user_id_fkey",
+    "type": "f",
+    "table": "business_presence",
+    "schema": "public",
+    "definition": "FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE"
+  },
+  {
+    "name": "support_tickets_subject_check",
+    "type": "c",
+    "table": "support_tickets",
+    "schema": "public",
+    "definition": "CHECK (char_length(subject) >= 3 AND char_length(subject) <= 120)"
+  },
+  {
+    "name": "support_tickets_category_check",
+    "type": "c",
+    "table": "support_tickets",
+    "schema": "public",
+    "definition": "CHECK (category = ANY (ARRAY['error'::text, 'question'::text, 'suggestion'::text, 'complaint'::text]))"
+  },
+  {
+    "name": "support_tickets_priority_check",
+    "type": "c",
+    "table": "support_tickets",
+    "schema": "public",
+    "definition": "CHECK (priority = ANY (ARRAY['normal'::text, 'urgent'::text]))"
+  },
+  {
+    "name": "support_tickets_status_check",
+    "type": "c",
+    "table": "support_tickets",
+    "schema": "public",
+    "definition": "CHECK (status = ANY (ARRAY['open'::text, 'in_progress'::text, 'waiting_customer'::text, 'resolved'::text]))"
+  },
+  {
+    "name": "support_tickets_pkey",
+    "type": "p",
+    "table": "support_tickets",
+    "schema": "public",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "support_tickets_number_key",
+    "type": "u",
+    "table": "support_tickets",
+    "schema": "public",
+    "definition": "UNIQUE (number)"
+  },
+  {
+    "name": "support_tickets_business_id_request_key_key",
+    "type": "u",
+    "table": "support_tickets",
+    "schema": "public",
+    "definition": "UNIQUE (business_id, request_key)"
+  },
+  {
+    "name": "support_tickets_business_id_fkey",
+    "type": "f",
+    "table": "support_tickets",
+    "schema": "public",
+    "definition": "FOREIGN KEY (business_id) REFERENCES businesses(id)"
+  },
+  {
+    "name": "support_tickets_created_by_fkey",
+    "type": "f",
+    "table": "support_tickets",
+    "schema": "public",
+    "definition": "FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL"
+  },
+  {
+    "name": "support_messages_side_check",
+    "type": "c",
+    "table": "support_messages",
+    "schema": "public",
+    "definition": "CHECK (side = ANY (ARRAY['customer'::text, 'platform'::text]))"
+  },
+  {
+    "name": "support_messages_body_check",
+    "type": "c",
+    "table": "support_messages",
+    "schema": "public",
+    "definition": "CHECK (char_length(body) >= 1 AND char_length(body) <= 4000)"
+  },
+  {
+    "name": "support_messages_pkey",
+    "type": "p",
+    "table": "support_messages",
+    "schema": "public",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "support_messages_ticket_id_request_key_key",
+    "type": "u",
+    "table": "support_messages",
+    "schema": "public",
+    "definition": "UNIQUE (ticket_id, request_key)"
+  },
+  {
+    "name": "support_messages_ticket_id_fkey",
+    "type": "f",
+    "table": "support_messages",
+    "schema": "public",
+    "definition": "FOREIGN KEY (ticket_id) REFERENCES support_tickets(id)"
+  },
+  {
+    "name": "support_messages_actor_id_fkey",
+    "type": "f",
+    "table": "support_messages",
+    "schema": "public",
+    "definition": "FOREIGN KEY (actor_id) REFERENCES auth.users(id) ON DELETE SET NULL"
+  },
+  {
+    "name": "support_email_outbox_status_check",
+    "type": "c",
+    "table": "support_email_outbox",
+    "schema": "public",
+    "definition": "CHECK (status = ANY (ARRAY['awaiting_configuration'::text, 'pending'::text, 'sending'::text, 'sent'::text, 'failed'::text]))"
+  },
+  {
+    "name": "support_email_outbox_pkey",
+    "type": "p",
+    "table": "support_email_outbox",
+    "schema": "public",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "support_email_outbox_message_id_key",
+    "type": "u",
+    "table": "support_email_outbox",
+    "schema": "public",
+    "definition": "UNIQUE (message_id)"
+  },
+  {
+    "name": "support_email_outbox_ticket_id_fkey",
+    "type": "f",
+    "table": "support_email_outbox",
+    "schema": "public",
+    "definition": "FOREIGN KEY (ticket_id) REFERENCES support_tickets(id)"
+  },
+  {
+    "name": "support_email_outbox_message_id_fkey",
+    "type": "f",
+    "table": "support_email_outbox",
+    "schema": "public",
+    "definition": "FOREIGN KEY (message_id) REFERENCES support_messages(id)"
+  },
+  {
+    "name": "settings_business_kind_check",
+    "type": "c",
+    "table": "settings",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CHECK (business_kind = ANY (ARRAY['food'::text, 'retail'::text]))"
+  },
+  {
+    "name": "products_stock_mode_check",
+    "type": "c",
+    "table": "products",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CHECK (stock_mode = ANY (ARRAY['none'::text, 'unit'::text, 'recipe'::text]))"
+  },
+  {
+    "name": "products_finished_inventory_id_fkey",
+    "type": "f",
+    "table": "products",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "FOREIGN KEY (finished_inventory_id) REFERENCES erp_d9c47d63ff104ff6b4c92a2b3e71ace9.inventory_items(id)"
+  },
+  {
+    "name": "customers_pkey",
+    "type": "p",
+    "table": "customers",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "orders_customer_id_fkey",
+    "type": "f",
+    "table": "orders",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "FOREIGN KEY (customer_id) REFERENCES erp_d9c47d63ff104ff6b4c92a2b3e71ace9.customers(id)"
+  },
+  {
+    "name": "commerce_version_pkey",
+    "type": "p",
+    "table": "commerce_version",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (version)"
+  },
+  {
+    "name": "settings_business_kind_check",
+    "type": "c",
+    "table": "settings",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CHECK (business_kind = ANY (ARRAY['food'::text, 'retail'::text]))"
+  },
+  {
+    "name": "products_stock_mode_check",
+    "type": "c",
+    "table": "products",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CHECK (stock_mode = ANY (ARRAY['none'::text, 'unit'::text, 'recipe'::text]))"
+  },
+  {
+    "name": "products_finished_inventory_id_fkey",
+    "type": "f",
+    "table": "products",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "FOREIGN KEY (finished_inventory_id) REFERENCES erp_158cd9f8679545bba83ec3e98d19255b.inventory_items(id)"
+  },
+  {
+    "name": "customers_pkey",
+    "type": "p",
+    "table": "customers",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "orders_customer_id_fkey",
+    "type": "f",
+    "table": "orders",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "FOREIGN KEY (customer_id) REFERENCES erp_158cd9f8679545bba83ec3e98d19255b.customers(id)"
+  },
+  {
+    "name": "commerce_version_pkey",
+    "type": "p",
+    "table": "commerce_version",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (version)"
+  },
+  {
+    "name": "business_deletions_pkey",
+    "type": "p",
+    "table": "business_deletions",
+    "schema": "public",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "business_deletions_id_fkey",
+    "type": "f",
+    "table": "business_deletions",
+    "schema": "public",
+    "definition": "FOREIGN KEY (id) REFERENCES businesses(id)"
+  },
+  {
+    "name": "business_deletions_actor_id_fkey",
+    "type": "f",
+    "table": "business_deletions",
+    "schema": "public",
+    "definition": "FOREIGN KEY (actor_id) REFERENCES platform_admins(user_id)"
+  },
+  {
+    "name": "product_import_rows_pkey",
+    "type": "p",
+    "table": "product_import_rows",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (request_key)"
+  },
+  {
+    "name": "product_import_rows_product_id_fkey",
+    "type": "f",
+    "table": "product_import_rows",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "FOREIGN KEY (product_id) REFERENCES erp_d9c47d63ff104ff6b4c92a2b3e71ace9.products(id)"
+  },
+  {
+    "name": "sale_returns_kind_check",
+    "type": "c",
+    "table": "sale_returns",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CHECK (kind = ANY (ARRAY['return'::text, 'exchange'::text]))"
+  },
+  {
+    "name": "sale_returns_amount_cents_check",
+    "type": "c",
+    "table": "sale_returns",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CHECK (amount_cents >= 0)"
+  },
+  {
+    "name": "sale_returns_pkey",
+    "type": "p",
+    "table": "sale_returns",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "sale_returns_request_key_key",
+    "type": "u",
+    "table": "sale_returns",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "UNIQUE (request_key)"
+  },
+  {
+    "name": "sale_returns_order_id_fkey",
+    "type": "f",
+    "table": "sale_returns",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "FOREIGN KEY (order_id) REFERENCES erp_d9c47d63ff104ff6b4c92a2b3e71ace9.orders(id)"
+  },
+  {
+    "name": "sale_returns_replacement_order_id_fkey",
+    "type": "f",
+    "table": "sale_returns",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "FOREIGN KEY (replacement_order_id) REFERENCES erp_d9c47d63ff104ff6b4c92a2b3e71ace9.orders(id)"
+  },
+  {
+    "name": "sale_return_lines_quantity_check",
+    "type": "c",
+    "table": "sale_return_lines",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CHECK (quantity > 0)"
+  },
+  {
+    "name": "sale_return_lines_refund_cents_check",
+    "type": "c",
+    "table": "sale_return_lines",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CHECK (refund_cents >= 0)"
+  },
+  {
+    "name": "sale_return_lines_restocked_check",
+    "type": "c",
+    "table": "sale_return_lines",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CHECK (restocked = ANY (ARRAY[0::bigint, 1::bigint]))"
+  },
+  {
+    "name": "sale_return_lines_pkey",
+    "type": "p",
+    "table": "sale_return_lines",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "PRIMARY KEY (return_id, item_id)"
+  },
+  {
+    "name": "sale_return_lines_return_id_fkey",
+    "type": "f",
+    "table": "sale_return_lines",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "FOREIGN KEY (return_id) REFERENCES erp_d9c47d63ff104ff6b4c92a2b3e71ace9.sale_returns(id)"
+  },
+  {
+    "name": "sale_return_lines_product_id_fkey",
+    "type": "f",
+    "table": "sale_return_lines",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "FOREIGN KEY (product_id) REFERENCES erp_d9c47d63ff104ff6b4c92a2b3e71ace9.products(id)"
+  },
+  {
+    "name": "sale_return_lines_inventory_id_fkey",
+    "type": "f",
+    "table": "sale_return_lines",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "FOREIGN KEY (inventory_id) REFERENCES erp_d9c47d63ff104ff6b4c92a2b3e71ace9.inventory_items(id)"
+  },
+  {
+    "name": "orders_exchange_from_order_id_fkey",
+    "type": "f",
+    "table": "orders",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "FOREIGN KEY (exchange_from_order_id) REFERENCES erp_d9c47d63ff104ff6b4c92a2b3e71ace9.orders(id)"
+  },
+  {
+    "name": "refund_amount_negative",
+    "type": "c",
+    "table": "ledger",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "definition": "CHECK (kind <> 'refund'::text OR amount_cents < 0)"
+  },
+  {
+    "name": "product_import_rows_pkey",
+    "type": "p",
+    "table": "product_import_rows",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (request_key)"
+  },
+  {
+    "name": "product_import_rows_product_id_fkey",
+    "type": "f",
+    "table": "product_import_rows",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "FOREIGN KEY (product_id) REFERENCES erp_158cd9f8679545bba83ec3e98d19255b.products(id)"
+  },
+  {
+    "name": "sale_returns_kind_check",
+    "type": "c",
+    "table": "sale_returns",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CHECK (kind = ANY (ARRAY['return'::text, 'exchange'::text]))"
+  },
+  {
+    "name": "sale_returns_amount_cents_check",
+    "type": "c",
+    "table": "sale_returns",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CHECK (amount_cents >= 0)"
+  },
+  {
+    "name": "sale_returns_pkey",
+    "type": "p",
+    "table": "sale_returns",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (id)"
+  },
+  {
+    "name": "sale_returns_request_key_key",
+    "type": "u",
+    "table": "sale_returns",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "UNIQUE (request_key)"
+  },
+  {
+    "name": "sale_returns_order_id_fkey",
+    "type": "f",
+    "table": "sale_returns",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "FOREIGN KEY (order_id) REFERENCES erp_158cd9f8679545bba83ec3e98d19255b.orders(id)"
+  },
+  {
+    "name": "sale_returns_replacement_order_id_fkey",
+    "type": "f",
+    "table": "sale_returns",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "FOREIGN KEY (replacement_order_id) REFERENCES erp_158cd9f8679545bba83ec3e98d19255b.orders(id)"
+  },
+  {
+    "name": "sale_return_lines_quantity_check",
+    "type": "c",
+    "table": "sale_return_lines",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CHECK (quantity > 0)"
+  },
+  {
+    "name": "sale_return_lines_refund_cents_check",
+    "type": "c",
+    "table": "sale_return_lines",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CHECK (refund_cents >= 0)"
+  },
+  {
+    "name": "sale_return_lines_restocked_check",
+    "type": "c",
+    "table": "sale_return_lines",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CHECK (restocked = ANY (ARRAY[0::bigint, 1::bigint]))"
+  },
+  {
+    "name": "sale_return_lines_pkey",
+    "type": "p",
+    "table": "sale_return_lines",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "PRIMARY KEY (return_id, item_id)"
+  },
+  {
+    "name": "sale_return_lines_return_id_fkey",
+    "type": "f",
+    "table": "sale_return_lines",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "FOREIGN KEY (return_id) REFERENCES erp_158cd9f8679545bba83ec3e98d19255b.sale_returns(id)"
+  },
+  {
+    "name": "sale_return_lines_product_id_fkey",
+    "type": "f",
+    "table": "sale_return_lines",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "FOREIGN KEY (product_id) REFERENCES erp_158cd9f8679545bba83ec3e98d19255b.products(id)"
+  },
+  {
+    "name": "sale_return_lines_inventory_id_fkey",
+    "type": "f",
+    "table": "sale_return_lines",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "FOREIGN KEY (inventory_id) REFERENCES erp_158cd9f8679545bba83ec3e98d19255b.inventory_items(id)"
+  },
+  {
+    "name": "orders_exchange_from_order_id_fkey",
+    "type": "f",
+    "table": "orders",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "FOREIGN KEY (exchange_from_order_id) REFERENCES erp_158cd9f8679545bba83ec3e98d19255b.orders(id)"
+  },
+  {
+    "name": "refund_amount_negative",
+    "type": "c",
+    "table": "ledger",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "definition": "CHECK (kind <> 'refund'::text OR amount_cents < 0)"
+  }
+]

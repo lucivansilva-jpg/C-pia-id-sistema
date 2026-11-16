@@ -1,0 +1,994 @@
+{
+  "exported_at": "2026-11-14 18:44:47.978224+00",
+  "postgres_version": "PostgreSQL 17.11 on aarch64-unknown-linux-gnu, compiled by gcc (GCC) 15.2.0, 64-bit",
+  "tables": [
+    {
+      "name": "accounts",
+      "rows": [],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 0
+    },
+    {
+      "name": "audit_log",
+      "rows": [],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 0
+    },
+    {
+      "name": "cash_sessions",
+      "rows": [],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 0
+    },
+    {
+      "name": "commerce_version",
+      "rows": [
+        {
+          "version": 1
+        },
+        {
+          "version": 2
+        }
+      ],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 2
+    },
+    {
+      "name": "customers",
+      "rows": [],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 0
+    },
+    {
+      "name": "dining_tables",
+      "rows": [
+        {
+          "id": "8a125316-b373-43e2-bf73-9d87f13a83b8",
+          "seats": null,
+          "active": 1,
+          "number": 1,
+          "created_at": "2026-11-14T03:13:49.146Z"
+        },
+        {
+          "id": "48c1c0e6-5949-407d-ab78-842fb4cb7e36",
+          "seats": null,
+          "active": 1,
+          "number": 2,
+          "created_at": "2026-11-14T03:13:49.146Z"
+        },
+        {
+          "id": "f8ebfdd4-917a-4c5c-9c93-1fb39f96a5a2",
+          "seats": null,
+          "active": 1,
+          "number": 3,
+          "created_at": "2026-11-14T03:13:49.146Z"
+        },
+        {
+          "id": "64e3effd-851e-4a87-ae94-be32e748c25e",
+          "seats": null,
+          "active": 1,
+          "number": 4,
+          "created_at": "2026-11-14T03:13:49.146Z"
+        },
+        {
+          "id": "5eac0ced-81b0-4a56-bab0-d9acb37238d2",
+          "seats": null,
+          "active": 1,
+          "number": 5,
+          "created_at": "2026-11-14T03:13:49.146Z"
+        },
+        {
+          "id": "1d84aaf4-16b6-48df-991a-606741d59548",
+          "seats": null,
+          "active": 1,
+          "number": 6,
+          "created_at": "2026-11-14T03:13:49.146Z"
+        },
+        {
+          "id": "c8d4514e-6c7c-4885-b256-70e2cb681a8b",
+          "seats": null,
+          "active": 1,
+          "number": 7,
+          "created_at": "2026-11-14T03:13:49.146Z"
+        },
+        {
+          "id": "5651246d-ec77-48a4-ab13-1fbe138964df",
+          "seats": null,
+          "active": 1,
+          "number": 8,
+          "created_at": "2026-11-14T03:13:49.147Z"
+        },
+        {
+          "id": "116393c7-0faf-4249-94f9-690349ca5821",
+          "seats": null,
+          "active": 1,
+          "number": 9,
+          "created_at": "2026-11-14T03:13:49.147Z"
+        },
+        {
+          "id": "7483009d-ef44-4ec0-b56f-0bfedf5d5124",
+          "seats": null,
+          "active": 1,
+          "number": 10,
+          "created_at": "2026-11-14T03:13:49.147Z"
+        },
+        {
+          "id": "5ece4070-29f5-4c50-9133-bde7bb66e89a",
+          "seats": null,
+          "active": 1,
+          "number": 11,
+          "created_at": "2026-11-14T03:13:49.147Z"
+        },
+        {
+          "id": "f1cb55db-dc35-4dc4-9ce0-068daea8687a",
+          "seats": null,
+          "active": 1,
+          "number": 12,
+          "created_at": "2026-11-14T03:13:49.147Z"
+        },
+        {
+          "id": "014e2ccf-31a4-4451-ae04-2bafab175f1e",
+          "seats": null,
+          "active": 1,
+          "number": 13,
+          "created_at": "2026-11-14T03:13:49.147Z"
+        },
+        {
+          "id": "7d154e13-69fe-4d93-ab8a-ffc78f54e173",
+          "seats": null,
+          "active": 1,
+          "number": 14,
+          "created_at": "2026-11-14T03:13:49.147Z"
+        },
+        {
+          "id": "3cdea8b2-f848-4f24-839d-71388fb4838a",
+          "seats": null,
+          "active": 1,
+          "number": 15,
+          "created_at": "2026-11-14T03:13:49.147Z"
+        }
+      ],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 15
+    },
+    {
+      "name": "employees",
+      "rows": [],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 0
+    },
+    {
+      "name": "favorites",
+      "rows": [],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 0
+    },
+    {
+      "name": "inventory_items",
+      "rows": [],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 0
+    },
+    {
+      "name": "inventory_moves",
+      "rows": [],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 0
+    },
+    {
+      "name": "ledger",
+      "rows": [],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 0
+    },
+    {
+      "name": "media",
+      "rows": [],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 0
+    },
+    {
+      "name": "orders",
+      "rows": [],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 0
+    },
+    {
+      "name": "product_import_rows",
+      "rows": [],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 0
+    },
+    {
+      "name": "products",
+      "rows": [],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 0
+    },
+    {
+      "name": "purchases",
+      "rows": [],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 0
+    },
+    {
+      "name": "recipes",
+      "rows": [],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 0
+    },
+    {
+      "name": "role_profiles",
+      "rows": [],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 0
+    },
+    {
+      "name": "sale_drafts",
+      "rows": [],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 0
+    },
+    {
+      "name": "sale_return_lines",
+      "rows": [],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 0
+    },
+    {
+      "name": "sale_returns",
+      "rows": [],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 0
+    },
+    {
+      "name": "settings",
+      "rows": [
+        {
+          "id": 1,
+          "cnpj": "",
+          "mode": "essential",
+          "name": "nbcriacoes",
+          "paper": 80,
+          "phone": "",
+          "address": "",
+          "logo_key": null,
+          "debit_days": 1,
+          "legal_name": "",
+          "updated_at": "2026-11-14T03:13:49.145Z",
+          "blind_close": 0,
+          "credit_days": 30,
+          "theme_color": "#6a330d",
+          "business_kind": "food",
+          "debit_fee_bps": null,
+          "credit_fee_bps": null,
+          "receipt_message": "Obrigado pela preferência! Volte sempre."
+        }
+      ],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 1
+    },
+    {
+      "name": "suppliers",
+      "rows": [],
+      "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+      "row_count": 0
+    },
+    {
+      "name": "accounts",
+      "rows": [],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 0
+    },
+    {
+      "name": "audit_log",
+      "rows": [],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 0
+    },
+    {
+      "name": "cash_sessions",
+      "rows": [],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 0
+    },
+    {
+      "name": "commerce_version",
+      "rows": [
+        {
+          "version": 1
+        },
+        {
+          "version": 2
+        }
+      ],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 2
+    },
+    {
+      "name": "customers",
+      "rows": [],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 0
+    },
+    {
+      "name": "dining_tables",
+      "rows": [
+        {
+          "id": "c2d8dca9-4d97-4177-9d9b-1adc4869d119",
+          "seats": null,
+          "active": 1,
+          "number": 1,
+          "created_at": "2026-11-14T03:13:49.064Z"
+        },
+        {
+          "id": "ccdd836b-4040-4b72-8d21-2d46b1892121",
+          "seats": null,
+          "active": 1,
+          "number": 2,
+          "created_at": "2026-11-14T03:13:49.064Z"
+        },
+        {
+          "id": "899fddb0-66af-47b3-b57a-c7c38b63d02e",
+          "seats": null,
+          "active": 1,
+          "number": 3,
+          "created_at": "2026-11-14T03:13:49.064Z"
+        },
+        {
+          "id": "75fd25c1-a1fb-48a4-8026-d67851f35445",
+          "seats": null,
+          "active": 1,
+          "number": 4,
+          "created_at": "2026-11-14T03:13:49.064Z"
+        },
+        {
+          "id": "99257da1-1fe7-4702-9f25-f66ea8e75b60",
+          "seats": null,
+          "active": 1,
+          "number": 5,
+          "created_at": "2026-11-14T03:13:49.064Z"
+        },
+        {
+          "id": "6d69014f-2d6a-44e3-b39d-5e2d24d7b1ac",
+          "seats": null,
+          "active": 1,
+          "number": 6,
+          "created_at": "2026-11-14T03:13:49.064Z"
+        },
+        {
+          "id": "b36750d0-b2d0-47b6-8a80-ed8e4cad9375",
+          "seats": null,
+          "active": 1,
+          "number": 7,
+          "created_at": "2026-11-14T03:13:49.064Z"
+        },
+        {
+          "id": "69478efc-8456-4970-89b5-26e996a66184",
+          "seats": null,
+          "active": 1,
+          "number": 8,
+          "created_at": "2026-11-14T03:13:49.064Z"
+        },
+        {
+          "id": "09c2f6ac-8244-45fa-8912-2b645dbdb650",
+          "seats": null,
+          "active": 1,
+          "number": 9,
+          "created_at": "2026-11-14T03:13:49.064Z"
+        },
+        {
+          "id": "ff9d2f2c-034e-470c-b13a-fcf128e1a98f",
+          "seats": null,
+          "active": 1,
+          "number": 10,
+          "created_at": "2026-11-14T03:13:49.064Z"
+        },
+        {
+          "id": "9b09046a-60fb-4f9a-bac6-c409e28ae349",
+          "seats": null,
+          "active": 1,
+          "number": 11,
+          "created_at": "2026-11-14T03:13:49.064Z"
+        },
+        {
+          "id": "4d33057c-3e9d-4302-9deb-ae1f6cbfbcba",
+          "seats": null,
+          "active": 1,
+          "number": 12,
+          "created_at": "2026-11-14T03:13:49.065Z"
+        },
+        {
+          "id": "5bd5918f-1f15-476e-9e2e-e14f098e9919",
+          "seats": null,
+          "active": 1,
+          "number": 13,
+          "created_at": "2026-11-14T03:13:49.065Z"
+        },
+        {
+          "id": "a3fc9211-94e8-4a62-a6a2-888ca7dd8d17",
+          "seats": null,
+          "active": 1,
+          "number": 14,
+          "created_at": "2026-11-14T03:13:49.065Z"
+        },
+        {
+          "id": "e2e14813-2276-4134-b79f-adb6762c3aa2",
+          "seats": null,
+          "active": 1,
+          "number": 15,
+          "created_at": "2026-11-14T03:13:49.065Z"
+        }
+      ],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 15
+    },
+    {
+      "name": "employees",
+      "rows": [],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 0
+    },
+    {
+      "name": "favorites",
+      "rows": [],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 0
+    },
+    {
+      "name": "inventory_items",
+      "rows": [],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 0
+    },
+    {
+      "name": "inventory_moves",
+      "rows": [],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 0
+    },
+    {
+      "name": "ledger",
+      "rows": [],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 0
+    },
+    {
+      "name": "media",
+      "rows": [],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 0
+    },
+    {
+      "name": "orders",
+      "rows": [],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 0
+    },
+    {
+      "name": "product_import_rows",
+      "rows": [],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 0
+    },
+    {
+      "name": "products",
+      "rows": [],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 0
+    },
+    {
+      "name": "purchases",
+      "rows": [],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 0
+    },
+    {
+      "name": "recipes",
+      "rows": [],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 0
+    },
+    {
+      "name": "role_profiles",
+      "rows": [],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 0
+    },
+    {
+      "name": "sale_drafts",
+      "rows": [],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 0
+    },
+    {
+      "name": "sale_return_lines",
+      "rows": [],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 0
+    },
+    {
+      "name": "sale_returns",
+      "rows": [],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 0
+    },
+    {
+      "name": "settings",
+      "rows": [
+        {
+          "id": 1,
+          "cnpj": "",
+          "mode": "essential",
+          "name": "Nb criacoes",
+          "paper": 80,
+          "phone": "",
+          "address": "",
+          "logo_key": null,
+          "debit_days": 1,
+          "legal_name": "",
+          "updated_at": "2026-11-14T03:13:49.063Z",
+          "blind_close": 0,
+          "credit_days": 30,
+          "theme_color": "#6a330d",
+          "business_kind": "food",
+          "debit_fee_bps": null,
+          "credit_fee_bps": null,
+          "receipt_message": "Obrigado pela preferência! Volte sempre."
+        }
+      ],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 1
+    },
+    {
+      "name": "suppliers",
+      "rows": [],
+      "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+      "row_count": 0
+    },
+    {
+      "name": "access_audit",
+      "rows": [
+        {
+          "id": "7fbc2951-cde7-4e50-91d7-7a784a20533e",
+          "action": "platform.setup",
+          "details": {},
+          "actor_id": "bb82f4e8-14df-4509-85e0-98fea0805678",
+          "target_id": null,
+          "created_at": "2026-11-14T02:16:35.432123+00:00",
+          "business_id": null,
+          "support_session_id": null
+        },
+        {
+          "id": "118d0726-572b-4f38-b04d-86f56afae831",
+          "action": "platform.login",
+          "details": {},
+          "actor_id": "bb82f4e8-14df-4509-85e0-98fea0805678",
+          "target_id": null,
+          "created_at": "2026-11-14T02:37:53.544989+00:00",
+          "business_id": null,
+          "support_session_id": null
+        },
+        {
+          "id": "1b138a3b-621b-4ffd-9f00-e24a31ee608f",
+          "action": "business.create.request",
+          "details": {
+            "name": "Nb criacoes"
+          },
+          "actor_id": "bb82f4e8-14df-4509-85e0-98fea0805678",
+          "target_id": null,
+          "created_at": "2026-11-14T02:39:27.721339+00:00",
+          "business_id": null,
+          "support_session_id": null
+        },
+        {
+          "id": "bf98757b-ada1-48bc-b493-865aaf508675",
+          "action": "business.create",
+          "details": {},
+          "actor_id": "bb82f4e8-14df-4509-85e0-98fea0805678",
+          "target_id": "eb0fe0dc-2a94-4592-9a0d-bf6468fb4345",
+          "created_at": "2026-11-14T02:39:28.036998+00:00",
+          "business_id": "d9c47d63-ff10-4ff6-b4c9-2a2b3e71ace9",
+          "support_session_id": null
+        },
+        {
+          "id": "a4822a51-7e3e-4167-8c0c-2d113694b29f",
+          "action": "platform.login",
+          "details": {},
+          "actor_id": "bb82f4e8-14df-4509-85e0-98fea0805678",
+          "target_id": null,
+          "created_at": "2026-11-14T02:41:07.095632+00:00",
+          "business_id": null,
+          "support_session_id": null
+        },
+        {
+          "id": "bd4826b3-2df6-41ab-b099-63b854ec17de",
+          "action": "platform.login",
+          "details": {},
+          "actor_id": "bb82f4e8-14df-4509-85e0-98fea0805678",
+          "target_id": null,
+          "created_at": "2026-11-14T02:41:35.114784+00:00",
+          "business_id": null,
+          "support_session_id": null
+        },
+        {
+          "id": "41b3210b-250b-4d03-b859-62cf4f90e531",
+          "action": "platform.login",
+          "details": {},
+          "actor_id": "bb82f4e8-14df-4509-85e0-98fea0805678",
+          "target_id": null,
+          "created_at": "2026-11-14T02:42:14.359209+00:00",
+          "business_id": null,
+          "support_session_id": null
+        },
+        {
+          "id": "8df92745-cd95-4bea-bf6e-5e4a8b69714f",
+          "action": "business.create.request",
+          "details": {
+            "name": "nbcriacoes"
+          },
+          "actor_id": "bb82f4e8-14df-4509-85e0-98fea0805678",
+          "target_id": null,
+          "created_at": "2026-11-14T02:42:50.381236+00:00",
+          "business_id": null,
+          "support_session_id": null
+        },
+        {
+          "id": "982d31e3-51bc-4b6a-903d-3f7e4dc03ce2",
+          "action": "business.create",
+          "details": {},
+          "actor_id": "bb82f4e8-14df-4509-85e0-98fea0805678",
+          "target_id": "1df44fd8-9ace-47c0-b25f-887d9fc7cc53",
+          "created_at": "2026-11-14T02:42:50.631253+00:00",
+          "business_id": "158cd9f8-6795-45bb-a83e-c3e98d19255b",
+          "support_session_id": null
+        },
+        {
+          "id": "1479613a-8118-4973-b037-c8afdefc208e",
+          "action": "platform.login",
+          "details": {},
+          "actor_id": "bb82f4e8-14df-4509-85e0-98fea0805678",
+          "target_id": null,
+          "created_at": "2026-11-14T02:43:45.042189+00:00",
+          "business_id": null,
+          "support_session_id": null
+        },
+        {
+          "id": "aad80163-e32b-45df-86ec-c310a494efae",
+          "action": "platform.login",
+          "details": {},
+          "actor_id": "bb82f4e8-14df-4509-85e0-98fea0805678",
+          "target_id": null,
+          "created_at": "2026-11-14T02:44:21.771731+00:00",
+          "business_id": null,
+          "support_session_id": null
+        },
+        {
+          "id": "2ccacb66-48cf-4694-8331-646a65ff59ac",
+          "action": "password.changed",
+          "details": {},
+          "actor_id": "1df44fd8-9ace-47c0-b25f-887d9fc7cc53",
+          "target_id": null,
+          "created_at": "2026-11-14T02:45:10.215233+00:00",
+          "business_id": "158cd9f8-6795-45bb-a83e-c3e98d19255b",
+          "support_session_id": null
+        },
+        {
+          "id": "f8146e4d-9374-470d-9271-fc101d44bcd5",
+          "action": "member.create.request",
+          "details": {
+            "role": "waiter",
+            "username": "lucivan"
+          },
+          "actor_id": "1df44fd8-9ace-47c0-b25f-887d9fc7cc53",
+          "target_id": null,
+          "created_at": "2026-11-14T02:46:25.711793+00:00",
+          "business_id": "158cd9f8-6795-45bb-a83e-c3e98d19255b",
+          "support_session_id": null
+        },
+        {
+          "id": "c893129e-299d-4139-a957-19fdc19b2de1",
+          "action": "member.create",
+          "details": {},
+          "actor_id": "1df44fd8-9ace-47c0-b25f-887d9fc7cc53",
+          "target_id": "a37a0f96-9068-40e4-90a0-b0b9dffba55f",
+          "created_at": "2026-11-14T02:46:25.959605+00:00",
+          "business_id": "158cd9f8-6795-45bb-a83e-c3e98d19255b",
+          "support_session_id": null
+        },
+        {
+          "id": "7b91787e-2bce-49a2-ad9f-e2cee54a353a",
+          "action": "member.create.request",
+          "details": {
+            "role": "cashier",
+            "username": "lucivan02"
+          },
+          "actor_id": "1df44fd8-9ace-47c0-b25f-887d9fc7cc53",
+          "target_id": null,
+          "created_at": "2026-11-14T02:47:19.369121+00:00",
+          "business_id": "158cd9f8-6795-45bb-a83e-c3e98d19255b",
+          "support_session_id": null
+        },
+        {
+          "id": "b2609686-6244-418e-947f-c2c7045fb2f9",
+          "action": "member.create",
+          "details": {},
+          "actor_id": "1df44fd8-9ace-47c0-b25f-887d9fc7cc53",
+          "target_id": "c017e5a8-f182-4991-9074-0e6ddf4572a2",
+          "created_at": "2026-11-14T02:47:19.583283+00:00",
+          "business_id": "158cd9f8-6795-45bb-a83e-c3e98d19255b",
+          "support_session_id": null
+        },
+        {
+          "id": "e20fdb6d-5d4c-4261-b396-dfbbd4fe43be",
+          "action": "password.changed",
+          "details": {},
+          "actor_id": "c017e5a8-f182-4991-9074-0e6ddf4572a2",
+          "target_id": null,
+          "created_at": "2026-11-14T02:48:41.04241+00:00",
+          "business_id": "158cd9f8-6795-45bb-a83e-c3e98d19255b",
+          "support_session_id": null
+        },
+        {
+          "id": "4cb2c18c-da9b-4d9d-9d6a-84421a39f193",
+          "action": "platform.login",
+          "details": {},
+          "actor_id": "bb82f4e8-14df-4509-85e0-98fea0805678",
+          "target_id": null,
+          "created_at": "2026-11-14T02:51:10.247873+00:00",
+          "business_id": null,
+          "support_session_id": null
+        },
+        {
+          "id": "8e272057-b28e-46ff-8caa-7bc748b5ff5c",
+          "action": "platform.login",
+          "details": {},
+          "actor_id": "bb82f4e8-14df-4509-85e0-98fea0805678",
+          "target_id": null,
+          "created_at": "2026-11-14T02:51:52.74992+00:00",
+          "business_id": null,
+          "support_session_id": null
+        },
+        {
+          "id": "58c5b3a0-5ae7-44c0-9ebe-139414e324fc",
+          "action": "platform.login",
+          "details": {},
+          "actor_id": "bb82f4e8-14df-4509-85e0-98fea0805678",
+          "target_id": null,
+          "created_at": "2026-11-14T11:25:44.918998+00:00",
+          "business_id": null,
+          "support_session_id": null
+        }
+      ],
+      "schema": "public",
+      "row_count": 20
+    },
+    {
+      "name": "auth_login_slots",
+      "rows": [
+        {
+          "attempts": 1,
+          "slot_key": "f570dcab9c877dda785c7aa5cf595312252f5d661ada1cbdb6117d9de8d59500",
+          "window_start": "2026-11-14T02:48:22.42512+00:00"
+        },
+        {
+          "attempts": 1,
+          "slot_key": "1f7b7ce987c2c8abdb00b4051689605eb14bb07564b2a4ce76ae35b038ccee0d",
+          "window_start": "2026-11-14T11:25:44.111866+00:00"
+        },
+        {
+          "attempts": 1,
+          "slot_key": "c09cf534816309b949cb8c5062dff54f536aeae684ac76c2b561313794c73c85",
+          "window_start": "2026-11-14T11:26:17.01646+00:00"
+        }
+      ],
+      "schema": "public",
+      "row_count": 3
+    },
+    {
+      "name": "business_deletions",
+      "rows": [],
+      "schema": "public",
+      "row_count": 0
+    },
+    {
+      "name": "business_members",
+      "rows": [
+        {
+          "role": "admin",
+          "active": true,
+          "user_id": "eb0fe0dc-2a94-4592-9a0d-bf6468fb4345",
+          "version": 1,
+          "username": "nira",
+          "created_at": "2026-11-14T02:39:27.975843+00:00",
+          "business_id": "d9c47d63-ff10-4ff6-b4c9-2a2b3e71ace9",
+          "login_email": "owner.0b714921-d5dd-4ae1-bcd1-5ce24b83f237@users.invalid",
+          "permissions": {},
+          "display_name": "nira",
+          "must_change_password": true
+        },
+        {
+          "role": "admin",
+          "active": true,
+          "user_id": "1df44fd8-9ace-47c0-b25f-887d9fc7cc53",
+          "version": 1,
+          "username": "nira",
+          "created_at": "2026-11-14T02:42:50.568161+00:00",
+          "business_id": "158cd9f8-6795-45bb-a83e-c3e98d19255b",
+          "login_email": "owner.7997fd13-603d-41bc-b050-31a2acdf6791@users.invalid",
+          "permissions": {},
+          "display_name": "nira",
+          "must_change_password": false
+        },
+        {
+          "role": "waiter",
+          "active": true,
+          "user_id": "a37a0f96-9068-40e4-90a0-b0b9dffba55f",
+          "version": 1,
+          "username": "lucivan",
+          "created_at": "2026-11-14T02:46:25.941015+00:00",
+          "business_id": "158cd9f8-6795-45bb-a83e-c3e98d19255b",
+          "login_email": "staff.da8403b4-0d77-4c81-add2-13906682c551@users.invalid",
+          "permissions": {},
+          "display_name": "ATENDENTE 01",
+          "must_change_password": true
+        },
+        {
+          "role": "cashier",
+          "active": true,
+          "user_id": "c017e5a8-f182-4991-9074-0e6ddf4572a2",
+          "version": 1,
+          "username": "lucivan02",
+          "created_at": "2026-11-14T02:47:19.554377+00:00",
+          "business_id": "158cd9f8-6795-45bb-a83e-c3e98d19255b",
+          "login_email": "staff.412374d3-eb85-44ac-88f4-5ceca20ad947@users.invalid",
+          "permissions": {},
+          "display_name": "ATENDENTE 02",
+          "must_change_password": false
+        }
+      ],
+      "schema": "public",
+      "row_count": 4
+    },
+    {
+      "name": "business_presence",
+      "rows": [],
+      "schema": "public",
+      "row_count": 0
+    },
+    {
+      "name": "business_profiles",
+      "rows": [
+        {
+          "name": "Administrador / proprietário",
+          "role": "admin",
+          "version": 1,
+          "business_id": "d9c47d63-ff10-4ff6-b4c9-2a2b3e71ace9",
+          "permissions": {}
+        },
+        {
+          "name": "Caixa / responsável pela operação",
+          "role": "cashier",
+          "version": 1,
+          "business_id": "d9c47d63-ff10-4ff6-b4c9-2a2b3e71ace9",
+          "permissions": {}
+        },
+        {
+          "name": "Garçom / atendimento",
+          "role": "waiter",
+          "version": 1,
+          "business_id": "d9c47d63-ff10-4ff6-b4c9-2a2b3e71ace9",
+          "permissions": {}
+        },
+        {
+          "name": "Administrador / proprietário",
+          "role": "admin",
+          "version": 1,
+          "business_id": "158cd9f8-6795-45bb-a83e-c3e98d19255b",
+          "permissions": {}
+        },
+        {
+          "name": "Caixa / responsável pela operação",
+          "role": "cashier",
+          "version": 1,
+          "business_id": "158cd9f8-6795-45bb-a83e-c3e98d19255b",
+          "permissions": {}
+        },
+        {
+          "name": "Garçom / atendimento",
+          "role": "waiter",
+          "version": 1,
+          "business_id": "158cd9f8-6795-45bb-a83e-c3e98d19255b",
+          "permissions": {}
+        }
+      ],
+      "schema": "public",
+      "row_count": 6
+    },
+    {
+      "name": "businesses",
+      "rows": [
+        {
+          "id": "d9c47d63-ff10-4ff6-b4c9-2a2b3e71ace9",
+          "code": "6d5d298b8aed",
+          "name": "Nb criacoes",
+          "active": true,
+          "created_at": "2026-11-14T02:39:27.975843+00:00",
+          "deleted_at": null,
+          "access_alias": null,
+          "owner_user_id": "eb0fe0dc-2a94-4592-9a0d-bf6468fb4345"
+        },
+        {
+          "id": "158cd9f8-6795-45bb-a83e-c3e98d19255b",
+          "code": "0a53012bd22d",
+          "name": "nbcriacoes",
+          "active": true,
+          "created_at": "2026-11-14T02:42:50.568161+00:00",
+          "deleted_at": null,
+          "access_alias": null,
+          "owner_user_id": "1df44fd8-9ace-47c0-b25f-887d9fc7cc53"
+        }
+      ],
+      "schema": "public",
+      "row_count": 2
+    },
+    {
+      "name": "managed_registration_permits",
+      "rows": [],
+      "schema": "public",
+      "row_count": 0
+    },
+    {
+      "name": "platform_admins",
+      "rows": [
+        {
+          "active": true,
+          "user_id": "bb82f4e8-14df-4509-85e0-98fea0805678",
+          "auth_email": "platform.58288dd8-ad29-4dfa-8aff-a6e841dc5f79@users.invalid",
+          "created_at": "2026-11-14T02:16:35.432123+00:00",
+          "login_email": "lucivan.silva@gmail.com",
+          "display_name": "lucivansilva"
+        }
+      ],
+      "schema": "public",
+      "row_count": 1
+    },
+    {
+      "name": "platform_setup",
+      "rows": [
+        {
+          "id": 1,
+          "email": "lucivan.silva@gmail.com",
+          "expires_at": "2026-11-21T00:29:21.867562+00:00",
+          "consumed_at": "2026-11-14T02:16:35.432123+00:00"
+        }
+      ],
+      "schema": "public",
+      "row_count": 1
+    },
+    {
+      "name": "support_email_outbox",
+      "rows": [],
+      "schema": "public",
+      "row_count": 0
+    },
+    {
+      "name": "support_messages",
+      "rows": [],
+      "schema": "public",
+      "row_count": 0
+    },
+    {
+      "name": "support_sessions",
+      "rows": [],
+      "schema": "public",
+      "row_count": 0
+    },
+    {
+      "name": "support_tickets",
+      "rows": [],
+      "schema": "public",
+      "row_count": 0
+    }
+  ]
+}

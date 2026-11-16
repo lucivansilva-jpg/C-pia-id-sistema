@@ -1,0 +1,7 @@
+﻿business_id;role;name;permissions;version
+d9c47d63-ff10-4ff6-b4c9-2a2b3e71ace9;admin;Administrador / proprietário;{};1
+d9c47d63-ff10-4ff6-b4c9-2a2b3e71ace9;cashier;Caixa / responsável pela operação;{};1
+d9c47d63-ff10-4ff6-b4c9-2a2b3e71ace9;waiter;Garçom / atendimento;{};1
+158cd9f8-6795-45bb-a83e-c3e98d19255b;admin;Administrador / proprietário;{};1
+158cd9f8-6795-45bb-a83e-c3e98d19255b;cashier;Caixa / responsável pela operação;{};1
+158cd9f8-6795-45bb-a83e-c3e98d19255b;waiter;Garçom / atendimento;{};1

@@ -1,0 +1,22 @@
+[
+  {
+    "acl": "{pg_database_owner=UC/pg_database_owner,=U/pg_database_owner,postgres=U/pg_database_owner,anon=U/pg_database_owner,authenticated=U/pg_database_owner,service_role=U/pg_database_owner}",
+    "name": "public",
+    "owner": "pg_database_owner"
+  },
+  {
+    "acl": "{postgres=UC/postgres,service_role=U/postgres}",
+    "name": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "owner": "postgres"
+  },
+  {
+    "acl": "{postgres=UC/postgres,service_role=U/postgres}",
+    "name": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "owner": "postgres"
+  },
+  {
+    "acl": "{postgres=UC/postgres,supabase_auth_admin=U/postgres,service_role=U/postgres}",
+    "name": "app_internal",
+    "owner": "postgres"
+  }
+]

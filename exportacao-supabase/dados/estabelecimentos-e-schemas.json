@@ -1,0 +1,18 @@
+[
+  {
+    "id": "d9c47d63-ff10-4ff6-b4c9-2a2b3e71ace9",
+    "nome": "Nb criacoes",
+    "codigo": "6d5d298b8aed",
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "cadastro_ativo": true,
+    "tabelas": 23
+  },
+  {
+    "id": "158cd9f8-6795-45bb-a83e-c3e98d19255b",
+    "nome": "nbcriacoes",
+    "codigo": "0a53012bd22d",
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "cadastro_ativo": true,
+    "tabelas": 23
+  }
+]

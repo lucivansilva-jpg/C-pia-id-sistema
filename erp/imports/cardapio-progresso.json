@@ -1,0 +1,1274 @@
+{
+  "source_sha256": "5e39d4e8e3d8d880b413e7ecb53d01e7b47ecfcd6a2ae64c2a5f9482aa96a934",
+  "brand": {
+    "name": "Lanches Progresso",
+    "phone": "(85) 9 8793-5967",
+    "receipt_message": "Agradecemos a preferência! Volte sempre!"
+  },
+  "products": [
+    {
+      "source_number": 1,
+      "source_page": 1,
+      "name": "Tapioca, carne do sol, queijo e requeijão",
+      "description": "",
+      "category": "Tapiocas salgadas",
+      "price_cents": 2200,
+      "options": []
+    },
+    {
+      "source_number": 2,
+      "source_page": 1,
+      "name": "Tapioca, carne do sol, presunto, queijo e requeijão",
+      "description": "",
+      "category": "Tapiocas salgadas",
+      "price_cents": 2400,
+      "options": []
+    },
+    {
+      "source_number": 3,
+      "source_page": 1,
+      "name": "Tapioca, carne do sol, ovo, queijo e requeijão",
+      "description": "",
+      "category": "Tapiocas salgadas",
+      "price_cents": 2500,
+      "options": []
+    },
+    {
+      "source_number": 4,
+      "source_page": 1,
+      "name": "Tapioca, carne do sol, ovo, queijo, presunto e requeijão",
+      "description": "",
+      "category": "Tapiocas salgadas",
+      "price_cents": 2700,
+      "options": []
+    },
+    {
+      "source_number": 5,
+      "source_page": 1,
+      "name": "Tapioca, frango, queijo e requeijão",
+      "description": "",
+      "category": "Tapiocas salgadas",
+      "price_cents": 2200,
+      "options": []
+    },
+    {
+      "source_number": 6,
+      "source_page": 1,
+      "name": "Tapioca, frango, presunto, queijo e requeijão",
+      "description": "",
+      "category": "Tapiocas salgadas",
+      "price_cents": 2300,
+      "options": []
+    },
+    {
+      "source_number": 7,
+      "source_page": 1,
+      "name": "Tapioca, presunto, queijo e requeijão",
+      "description": "",
+      "category": "Tapiocas salgadas",
+      "price_cents": 2100,
+      "options": []
+    },
+    {
+      "source_number": 8,
+      "source_page": 1,
+      "name": "Tapioca, calabresa, queijo e requeijão",
+      "description": "",
+      "category": "Tapiocas salgadas",
+      "price_cents": 2200,
+      "options": []
+    },
+    {
+      "source_number": 9,
+      "source_page": 1,
+      "name": "Tapioca, calabresa, presunto, queijo e requeijão",
+      "description": "",
+      "category": "Tapiocas salgadas",
+      "price_cents": 2400,
+      "options": []
+    },
+    {
+      "source_number": 10,
+      "source_page": 1,
+      "name": "Tapioca, queijo, nata, manteiga",
+      "description": "",
+      "category": "Tapiocas salgadas",
+      "price_cents": 2000,
+      "options": []
+    },
+    {
+      "source_number": 11,
+      "source_page": 1,
+      "name": "Tapioca, queijo, requeijão e manteiga",
+      "description": "",
+      "category": "Tapiocas salgadas",
+      "price_cents": 2000,
+      "options": []
+    },
+    {
+      "source_number": 12,
+      "source_page": 1,
+      "name": "Tapioca, queijo, ovo e requeijão",
+      "description": "",
+      "category": "Tapiocas salgadas",
+      "price_cents": 2100,
+      "options": []
+    },
+    {
+      "source_number": 13,
+      "source_page": 1,
+      "name": "Tapioca, queijo e manteiga",
+      "description": "",
+      "category": "Tapiocas salgadas",
+      "price_cents": 1800,
+      "options": []
+    },
+    {
+      "source_number": 14,
+      "source_page": 1,
+      "name": "Tapioca, nata e margarina",
+      "description": "",
+      "category": "Tapiocas salgadas",
+      "price_cents": 1500,
+      "options": []
+    },
+    {
+      "source_number": 15,
+      "source_page": 1,
+      "name": "Tapioca com margarina ou manteiga",
+      "description": "",
+      "category": "Tapiocas salgadas",
+      "price_cents": 1200,
+      "options": [
+        {
+          "label": "Preparo",
+          "values": [
+            "Margarina",
+            "Manteiga"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "source_number": 16,
+      "source_page": 1,
+      "name": "Tapioca com 2 queijos (coalho e mussarela)",
+      "description": "",
+      "category": "Tapiocas salgadas",
+      "price_cents": 2000,
+      "options": []
+    },
+    {
+      "source_number": 17,
+      "source_page": 1,
+      "name": "Tapioca, ovo, manteiga e requeijão",
+      "description": "",
+      "category": "Tapiocas salgadas",
+      "price_cents": 1500,
+      "options": []
+    },
+    {
+      "source_number": 18,
+      "source_page": 2,
+      "name": "Tapioca com chocolate e leite condensado",
+      "description": "",
+      "category": "Tapiocas doces",
+      "price_cents": 2500,
+      "options": []
+    },
+    {
+      "source_number": 19,
+      "source_page": 2,
+      "name": "Tapioca com coco e leite condensado",
+      "description": "",
+      "category": "Tapiocas doces",
+      "price_cents": 2500,
+      "options": []
+    },
+    {
+      "source_number": 20,
+      "source_page": 2,
+      "name": "Tapioca com queijo e leite condensado",
+      "description": "",
+      "category": "Tapiocas doces",
+      "price_cents": 2200,
+      "options": []
+    },
+    {
+      "source_number": 21,
+      "source_page": 2,
+      "name": "Tapioca romeu e julieta (queijo e goiabada)",
+      "description": "",
+      "category": "Tapiocas doces",
+      "price_cents": 2800,
+      "options": []
+    },
+    {
+      "source_number": 22,
+      "source_page": 3,
+      "name": "Pão, carne do sol, queijo e requeijão",
+      "description": "",
+      "category": "Pão carioca recheado",
+      "price_cents": 2100,
+      "options": []
+    },
+    {
+      "source_number": 23,
+      "source_page": 3,
+      "name": "Pão, carne de sol, presunto, queijo e requeijão",
+      "description": "",
+      "category": "Pão carioca recheado",
+      "price_cents": 2200,
+      "options": []
+    },
+    {
+      "source_number": 24,
+      "source_page": 3,
+      "name": "Pão, carne moída e queijo",
+      "description": "",
+      "category": "Pão carioca recheado",
+      "price_cents": 2200,
+      "options": []
+    },
+    {
+      "source_number": 25,
+      "source_page": 3,
+      "name": "Pão, carne moída, ovo e queijo",
+      "description": "",
+      "category": "Pão carioca recheado",
+      "price_cents": 2300,
+      "options": []
+    },
+    {
+      "source_number": 26,
+      "source_page": 3,
+      "name": "Pão, frango, queijo e requeijão",
+      "description": "",
+      "category": "Pão carioca recheado",
+      "price_cents": 2100,
+      "options": []
+    },
+    {
+      "source_number": 27,
+      "source_page": 3,
+      "name": "Pão, frango, presunto, queijo e requeijão",
+      "description": "",
+      "category": "Pão carioca recheado",
+      "price_cents": 2200,
+      "options": []
+    },
+    {
+      "source_number": 28,
+      "source_page": 3,
+      "name": "Pão, ovo, presunto, queijo e requeijão",
+      "description": "",
+      "category": "Pão carioca recheado",
+      "price_cents": 2100,
+      "options": []
+    },
+    {
+      "source_number": 29,
+      "source_page": 3,
+      "name": "Pão, queijo, ovo e requeijão",
+      "description": "",
+      "category": "Pão carioca recheado",
+      "price_cents": 2000,
+      "options": []
+    },
+    {
+      "source_number": 30,
+      "source_page": 3,
+      "name": "Pão, queijo, presunto e requeijão",
+      "description": "",
+      "category": "Pão carioca recheado",
+      "price_cents": 2000,
+      "options": []
+    },
+    {
+      "source_number": 31,
+      "source_page": 3,
+      "name": "Pão, calabresa, queijo, presunto e requeijão",
+      "description": "",
+      "category": "Pão carioca recheado",
+      "price_cents": 2300,
+      "options": []
+    },
+    {
+      "source_number": 32,
+      "source_page": 3,
+      "name": "Pão, queijo, manteiga e requeijão",
+      "description": "",
+      "category": "Pão carioca recheado",
+      "price_cents": 1500,
+      "options": []
+    },
+    {
+      "source_number": 33,
+      "source_page": 3,
+      "name": "Pão, ovo, manteiga e requeijão",
+      "description": "",
+      "category": "Pão carioca recheado",
+      "price_cents": 1300,
+      "options": []
+    },
+    {
+      "source_number": 34,
+      "source_page": 4,
+      "name": "Cuscuz, carne de sol, queijo e requeijão",
+      "description": "Opcionais citados no cardápio: verdura, manteiga e requeijão. Consulte condições.",
+      "category": "Cuscuz — Gostosinho",
+      "price_cents": 2500,
+      "options": []
+    },
+    {
+      "source_number": 35,
+      "source_page": 4,
+      "name": "Cuscuz, carne de sol, ovo, queijo e requeijão",
+      "description": "Opcionais citados no cardápio: verdura, manteiga e requeijão. Consulte condições.",
+      "category": "Cuscuz — Gostosinho",
+      "price_cents": 2600,
+      "options": []
+    },
+    {
+      "source_number": 36,
+      "source_page": 4,
+      "name": "Cuscuz, carne moída, queijo e requeijão",
+      "description": "Opcionais citados no cardápio: verdura, manteiga e requeijão. Consulte condições.",
+      "category": "Cuscuz — Gostosinho",
+      "price_cents": 2500,
+      "options": []
+    },
+    {
+      "source_number": 37,
+      "source_page": 4,
+      "name": "Cuscuz, carne moída, ovo, queijo e requeijão",
+      "description": "Opcionais citados no cardápio: verdura, manteiga e requeijão. Consulte condições.",
+      "category": "Cuscuz — Gostosinho",
+      "price_cents": 2600,
+      "options": []
+    },
+    {
+      "source_number": 38,
+      "source_page": 4,
+      "name": "Cuscuz, frango, queijo e requeijão",
+      "description": "Opcionais citados no cardápio: verdura, manteiga e requeijão. Consulte condições.",
+      "category": "Cuscuz — Gostosinho",
+      "price_cents": 2500,
+      "options": []
+    },
+    {
+      "source_number": 39,
+      "source_page": 4,
+      "name": "Cuscuz, frango, queijo, ovo e requeijão",
+      "description": "Opcionais citados no cardápio: verdura, manteiga e requeijão. Consulte condições.",
+      "category": "Cuscuz — Gostosinho",
+      "price_cents": 2600,
+      "options": []
+    },
+    {
+      "source_number": 40,
+      "source_page": 4,
+      "name": "Cuscuz, carne do sol, queijo, ovo, presunto e requeijão",
+      "description": "Opcionais citados no cardápio: verdura, manteiga e requeijão. Consulte condições.",
+      "category": "Cuscuz — Gostosinho",
+      "price_cents": 2800,
+      "options": []
+    },
+    {
+      "source_number": 41,
+      "source_page": 4,
+      "name": "Cuscuz, calabresa, ovo, queijo, presunto e requeijão",
+      "description": "Opcionais citados no cardápio: verdura, manteiga e requeijão. Consulte condições.",
+      "category": "Cuscuz — Gostosinho",
+      "price_cents": 2700,
+      "options": []
+    },
+    {
+      "source_number": 42,
+      "source_page": 4,
+      "name": "Cuscuz, ovo, queijo e requeijão",
+      "description": "Opcionais citados no cardápio: verdura, manteiga e requeijão. Consulte condições.",
+      "category": "Cuscuz — Gostosinho",
+      "price_cents": 2200,
+      "options": []
+    },
+    {
+      "source_number": 43,
+      "source_page": 4,
+      "name": "Cuscuz, ovo, manteiga e requeijão",
+      "description": "Opcionais citados no cardápio: verdura, manteiga e requeijão. Consulte condições.",
+      "category": "Cuscuz — Gostosinho",
+      "price_cents": 2000,
+      "options": []
+    },
+    {
+      "source_number": 44,
+      "source_page": 4,
+      "name": "Cuscuz, manteiga e requeijão",
+      "description": "Opcionais citados no cardápio: verdura, manteiga e requeijão. Consulte condições.",
+      "category": "Cuscuz — Gostosinho",
+      "price_cents": 1800,
+      "options": []
+    },
+    {
+      "source_number": 45,
+      "source_page": 4,
+      "name": "Cuscuz, queijo, manteiga e requeijão",
+      "description": "Opcionais citados no cardápio: verdura, manteiga e requeijão. Consulte condições.",
+      "category": "Cuscuz — Gostosinho",
+      "price_cents": 2000,
+      "options": []
+    },
+    {
+      "source_number": 46,
+      "source_page": 4,
+      "name": "Cuscuz, bacon, queijo, ovo, e requeijão",
+      "description": "Opcionais citados no cardápio: verdura, manteiga e requeijão. Consulte condições.",
+      "category": "Cuscuz — Gostosinho",
+      "price_cents": 3000,
+      "options": []
+    },
+    {
+      "source_number": 47,
+      "source_page": 5,
+      "name": "Panqueca, carne do sol e queijo",
+      "description": "",
+      "category": "Panquecas",
+      "price_cents": 3000,
+      "options": []
+    },
+    {
+      "source_number": 48,
+      "source_page": 5,
+      "name": "Panqueca, carne moída e queijo",
+      "description": "",
+      "category": "Panquecas",
+      "price_cents": 3000,
+      "options": []
+    },
+    {
+      "source_number": 49,
+      "source_page": 5,
+      "name": "Panqueca, frango e queijo",
+      "description": "",
+      "category": "Panquecas",
+      "price_cents": 3000,
+      "options": []
+    },
+    {
+      "source_number": 50,
+      "source_page": 5,
+      "name": "Omelete, carne de sol, queijo e requeijão",
+      "description": "",
+      "category": "Omeletes",
+      "price_cents": 2900,
+      "options": []
+    },
+    {
+      "source_number": 51,
+      "source_page": 5,
+      "name": "Omelete, carne moída, queijo e requeijão",
+      "description": "",
+      "category": "Omeletes",
+      "price_cents": 2900,
+      "options": []
+    },
+    {
+      "source_number": 52,
+      "source_page": 5,
+      "name": "Omelete, frango, queijo e requeijão",
+      "description": "",
+      "category": "Omeletes",
+      "price_cents": 2900,
+      "options": []
+    },
+    {
+      "source_number": 53,
+      "source_page": 5,
+      "name": "Crepioca de carne do sol, queijo, requeijão",
+      "description": "",
+      "category": "Crepiocas",
+      "price_cents": 2700,
+      "options": []
+    },
+    {
+      "source_number": 54,
+      "source_page": 5,
+      "name": "Crepioca frango, queijo, requeijão",
+      "description": "",
+      "category": "Crepiocas",
+      "price_cents": 2700,
+      "options": []
+    },
+    {
+      "source_number": 55,
+      "source_page": 5,
+      "name": "Crepioca de carne moída, queijo, requeijão",
+      "description": "",
+      "category": "Crepiocas",
+      "price_cents": 2700,
+      "options": []
+    },
+    {
+      "source_number": 56,
+      "source_page": 5,
+      "name": "Crepioca, queijo, presunto e requeijão",
+      "description": "",
+      "category": "Crepiocas",
+      "price_cents": 2500,
+      "options": []
+    },
+    {
+      "source_number": 57,
+      "source_page": 6,
+      "name": "Chocolate quente — xícara grande",
+      "description": "",
+      "category": "Bebidas quentes",
+      "price_cents": 1800,
+      "options": []
+    },
+    {
+      "source_number": 58,
+      "source_page": 6,
+      "name": "Chocolate quente — xícara média",
+      "description": "",
+      "category": "Bebidas quentes",
+      "price_cents": 1600,
+      "options": []
+    },
+    {
+      "source_number": 59,
+      "source_page": 6,
+      "name": "Chocolate quente — xícara pequena",
+      "description": "",
+      "category": "Bebidas quentes",
+      "price_cents": 1400,
+      "options": []
+    },
+    {
+      "source_number": 60,
+      "source_page": 6,
+      "name": "Jarra chocolate quente",
+      "description": "",
+      "category": "Bebidas quentes",
+      "price_cents": 5000,
+      "options": []
+    },
+    {
+      "source_number": 61,
+      "source_page": 6,
+      "name": "Café puro (xícara)",
+      "description": "",
+      "category": "Bebidas quentes",
+      "price_cents": 500,
+      "options": []
+    },
+    {
+      "source_number": 62,
+      "source_page": 6,
+      "name": "Café com leite (xícara)",
+      "description": "",
+      "category": "Bebidas quentes",
+      "price_cents": 800,
+      "options": []
+    },
+    {
+      "source_number": 63,
+      "source_page": 6,
+      "name": "Capuccino grande",
+      "description": "",
+      "category": "Bebidas quentes",
+      "price_cents": 1700,
+      "options": []
+    },
+    {
+      "source_number": 64,
+      "source_page": 6,
+      "name": "Capuccino pequeno",
+      "description": "",
+      "category": "Bebidas quentes",
+      "price_cents": 1500,
+      "options": []
+    },
+    {
+      "source_number": 65,
+      "source_page": 6,
+      "name": "Adicional de chantilly",
+      "description": "",
+      "category": "Adicionais",
+      "price_cents": 600,
+      "options": []
+    },
+    {
+      "source_number": 66,
+      "source_page": 6,
+      "name": "Chocolate gelado — copo grande 400 ml",
+      "description": "",
+      "category": "Chocolate gelado",
+      "price_cents": 1800,
+      "options": []
+    },
+    {
+      "source_number": 67,
+      "source_page": 6,
+      "name": "Jarra chocolate gelado",
+      "description": "",
+      "category": "Chocolate gelado",
+      "price_cents": 4000,
+      "options": []
+    },
+    {
+      "source_number": 68,
+      "source_page": 7,
+      "name": "Canja g",
+      "description": "",
+      "category": "Pratos quentes",
+      "price_cents": 2200,
+      "options": []
+    },
+    {
+      "source_number": 69,
+      "source_page": 7,
+      "name": "Canja p",
+      "description": "",
+      "category": "Pratos quentes",
+      "price_cents": 2000,
+      "options": []
+    },
+    {
+      "source_number": 70,
+      "source_page": 7,
+      "name": "Caldo g",
+      "description": "",
+      "category": "Pratos quentes",
+      "price_cents": 2200,
+      "options": []
+    },
+    {
+      "source_number": 71,
+      "source_page": 7,
+      "name": "Caldo p",
+      "description": "",
+      "category": "Pratos quentes",
+      "price_cents": 2000,
+      "options": []
+    },
+    {
+      "source_number": 72,
+      "source_page": 8,
+      "name": "Baurú no pão árabe",
+      "description": "Pão árabe, carne, queijo, presunto, ovo, salada",
+      "category": "Sanduíches",
+      "price_cents": 3000,
+      "options": []
+    },
+    {
+      "source_number": 73,
+      "source_page": 8,
+      "name": "X tudo — carne do sol",
+      "description": "pão árabe, carne do sol, queijo, presunto, ovo e salada",
+      "category": "Sanduíches",
+      "price_cents": 3200,
+      "options": []
+    },
+    {
+      "source_number": 74,
+      "source_page": 8,
+      "name": "X tudo — frango",
+      "description": "pão árabe, frango, queijo, presunto, ovo e salada",
+      "category": "Sanduíches",
+      "price_cents": 3200,
+      "options": []
+    },
+    {
+      "source_number": 75,
+      "source_page": 8,
+      "name": "Americano",
+      "description": "pão bola, queijo, presunto, ovos, alface e tomate",
+      "category": "Sanduíches",
+      "price_cents": 2700,
+      "options": []
+    },
+    {
+      "source_number": 76,
+      "source_page": 8,
+      "name": "Misto burguer",
+      "description": "pão bola, carne, queijo, presunto, alface e tomate",
+      "category": "Sanduíches",
+      "price_cents": 2700,
+      "options": []
+    },
+    {
+      "source_number": 77,
+      "source_page": 8,
+      "name": "X egg burguer",
+      "description": "pão bola, carne, queijo, ovos, alface e tomate",
+      "category": "Sanduíches",
+      "price_cents": 2700,
+      "options": []
+    },
+    {
+      "source_number": 78,
+      "source_page": 8,
+      "name": "X burguer",
+      "description": "Pão bola, carne, queijo, alface e tomate",
+      "category": "Sanduíches",
+      "price_cents": 2500,
+      "options": []
+    },
+    {
+      "source_number": 79,
+      "source_page": 8,
+      "name": "Misto",
+      "description": "pão de forma, queijo, presunto",
+      "category": "Sanduíches",
+      "price_cents": 2300,
+      "options": []
+    },
+    {
+      "source_number": 80,
+      "source_page": 8,
+      "name": "X bacon",
+      "description": "queijo, bacon, presunto, ovo, salada",
+      "category": "Sanduíches",
+      "price_cents": 3300,
+      "options": []
+    },
+    {
+      "source_number": 81,
+      "source_page": 8,
+      "name": "X calabresa",
+      "description": "calabresa, queijo, presunto, ovo, salada",
+      "category": "Sanduíches",
+      "price_cents": 3200,
+      "options": []
+    },
+    {
+      "source_number": 82,
+      "source_page": 8,
+      "name": "X completo",
+      "description": "Carne do sol, calabresa, bacon, queijo, presunto, ovo, salada",
+      "category": "Sanduíches",
+      "price_cents": 4100,
+      "options": []
+    },
+    {
+      "source_number": 83,
+      "source_page": 9,
+      "name": "Suco de laranja 400ml",
+      "description": "",
+      "category": "Sucos",
+      "price_cents": 1400,
+      "options": []
+    },
+    {
+      "source_number": 84,
+      "source_page": 9,
+      "name": "Suco de acerola 400ml",
+      "description": "",
+      "category": "Sucos",
+      "price_cents": 1200,
+      "options": []
+    },
+    {
+      "source_number": 85,
+      "source_page": 9,
+      "name": "Suco de cajá 400ml",
+      "description": "",
+      "category": "Sucos",
+      "price_cents": 1200,
+      "options": []
+    },
+    {
+      "source_number": 86,
+      "source_page": 9,
+      "name": "Suco de maracujá 400ml",
+      "description": "",
+      "category": "Sucos",
+      "price_cents": 1200,
+      "options": []
+    },
+    {
+      "source_number": 87,
+      "source_page": 9,
+      "name": "Suco de goiaba 400ml",
+      "description": "",
+      "category": "Sucos",
+      "price_cents": 1200,
+      "options": []
+    },
+    {
+      "source_number": 88,
+      "source_page": 9,
+      "name": "Suco de graviola 400ml",
+      "description": "",
+      "category": "Sucos",
+      "price_cents": 1200,
+      "options": []
+    },
+    {
+      "source_number": 89,
+      "source_page": 9,
+      "name": "Suco de abacaxi 400ml",
+      "description": "",
+      "category": "Sucos",
+      "price_cents": 1200,
+      "options": []
+    },
+    {
+      "source_number": 90,
+      "source_page": 9,
+      "name": "Suco de manga 400ml",
+      "description": "",
+      "category": "Sucos",
+      "price_cents": 1200,
+      "options": []
+    },
+    {
+      "source_number": 91,
+      "source_page": 9,
+      "name": "Suco de laranja com acerola 400ml",
+      "description": "",
+      "category": "Sucos",
+      "price_cents": 1400,
+      "options": []
+    },
+    {
+      "source_number": 92,
+      "source_page": 9,
+      "name": "Jarra de suco de laranja — 750 ml",
+      "description": "",
+      "category": "Sucos",
+      "price_cents": 3300,
+      "options": []
+    },
+    {
+      "source_number": 93,
+      "source_page": 9,
+      "name": "Jarra de suco de laranja — 1 L",
+      "description": "",
+      "category": "Sucos",
+      "price_cents": 3800,
+      "options": []
+    },
+    {
+      "source_number": 94,
+      "source_page": 9,
+      "name": "Jarra de suco — 750 ml",
+      "description": "Sabores do cardápio, exceto laranja.",
+      "category": "Sucos",
+      "price_cents": 2500,
+      "options": [
+        {
+          "label": "Sabor",
+          "values": [
+            "Acerola",
+            "Cajá",
+            "Maracujá",
+            "Goiaba",
+            "Graviola",
+            "Abacaxi",
+            "Manga"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "source_number": 95,
+      "source_page": 9,
+      "name": "Jarra de suco — 1 L",
+      "description": "Sabores do cardápio, exceto laranja.",
+      "category": "Sucos",
+      "price_cents": 2700,
+      "options": [
+        {
+          "label": "Sabor",
+          "values": [
+            "Acerola",
+            "Cajá",
+            "Maracujá",
+            "Goiaba",
+            "Graviola",
+            "Abacaxi",
+            "Manga"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "source_number": 96,
+      "source_page": 10,
+      "name": "Vitamina de acerola 400ml",
+      "description": "",
+      "category": "Vitaminas",
+      "price_cents": 1400,
+      "options": []
+    },
+    {
+      "source_number": 97,
+      "source_page": 10,
+      "name": "Vitamina de cajá 400ml",
+      "description": "",
+      "category": "Vitaminas",
+      "price_cents": 1400,
+      "options": []
+    },
+    {
+      "source_number": 98,
+      "source_page": 10,
+      "name": "Vitamina de maracujá 400ml",
+      "description": "",
+      "category": "Vitaminas",
+      "price_cents": 1400,
+      "options": []
+    },
+    {
+      "source_number": 99,
+      "source_page": 10,
+      "name": "Vitamina de goiaba 400ml",
+      "description": "",
+      "category": "Vitaminas",
+      "price_cents": 1400,
+      "options": []
+    },
+    {
+      "source_number": 100,
+      "source_page": 10,
+      "name": "Vitamina de graviola 400ml",
+      "description": "",
+      "category": "Vitaminas",
+      "price_cents": 1400,
+      "options": []
+    },
+    {
+      "source_number": 101,
+      "source_page": 10,
+      "name": "Vitamina de abacaxi 400ml",
+      "description": "",
+      "category": "Vitaminas",
+      "price_cents": 1400,
+      "options": []
+    },
+    {
+      "source_number": 102,
+      "source_page": 10,
+      "name": "Vitamina de manga 400ml",
+      "description": "",
+      "category": "Vitaminas",
+      "price_cents": 1400,
+      "options": []
+    },
+    {
+      "source_number": 103,
+      "source_page": 10,
+      "name": "Vitamina de banana 400ml",
+      "description": "",
+      "category": "Vitaminas",
+      "price_cents": 1400,
+      "options": []
+    },
+    {
+      "source_number": 104,
+      "source_page": 10,
+      "name": "Vitamina de mamão 400ml",
+      "description": "",
+      "category": "Vitaminas",
+      "price_cents": 1400,
+      "options": []
+    },
+    {
+      "source_number": 105,
+      "source_page": 10,
+      "name": "Jarra vitamina 750ml",
+      "description": "",
+      "category": "Vitaminas",
+      "price_cents": 2800,
+      "options": [
+        {
+          "label": "Sabor",
+          "values": [
+            "Acerola",
+            "Cajá",
+            "Maracujá",
+            "Goiaba",
+            "Graviola",
+            "Abacaxi",
+            "Manga",
+            "Banana",
+            "Mamão"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "source_number": 106,
+      "source_page": 10,
+      "name": "Jarra vitamina 1l",
+      "description": "",
+      "category": "Vitaminas",
+      "price_cents": 3200,
+      "options": [
+        {
+          "label": "Sabor",
+          "values": [
+            "Acerola",
+            "Cajá",
+            "Maracujá",
+            "Goiaba",
+            "Graviola",
+            "Abacaxi",
+            "Manga",
+            "Banana",
+            "Mamão"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "source_number": 107,
+      "source_page": 11,
+      "name": "Água sem gás",
+      "description": "",
+      "category": "Bebidas",
+      "price_cents": 400,
+      "options": []
+    },
+    {
+      "source_number": 108,
+      "source_page": 11,
+      "name": "Água com gás",
+      "description": "",
+      "category": "Bebidas",
+      "price_cents": 600,
+      "options": []
+    },
+    {
+      "source_number": 109,
+      "source_page": 11,
+      "name": "Água 1,5 L",
+      "description": "",
+      "category": "Bebidas",
+      "price_cents": 900,
+      "options": []
+    },
+    {
+      "source_number": 110,
+      "source_page": 11,
+      "name": "Refrigerante - lata",
+      "description": "Opções: Coca-Cola, Coca-Cola Zero, Sprite, Guaraná, São Geraldo.",
+      "category": "Bebidas",
+      "price_cents": 900,
+      "options": [
+        {
+          "label": "Refrigerante",
+          "values": [
+            "Coca-Cola",
+            "Coca-Cola Zero",
+            "Sprite",
+            "Guaraná",
+            "São Geraldo"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "source_number": 111,
+      "source_page": 11,
+      "name": "Refrigerante 1 l",
+      "description": "Opções: Coca-Cola, São Geraldo, Guaraná, Coca-Cola Zero, São Geraldo Zero, Fanta Laranja.",
+      "category": "Bebidas",
+      "price_cents": 1500,
+      "options": [
+        {
+          "label": "Refrigerante",
+          "values": [
+            "Coca-Cola",
+            "São Geraldo",
+            "Guaraná",
+            "Coca-Cola Zero",
+            "São Geraldo Zero",
+            "Fanta Laranja"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "source_number": 112,
+      "source_page": 11,
+      "name": "Coca 600ml",
+      "description": "",
+      "category": "Bebidas",
+      "price_cents": 1200,
+      "options": []
+    },
+    {
+      "source_number": 113,
+      "source_page": 11,
+      "name": "Coca zero 600ml",
+      "description": "",
+      "category": "Bebidas",
+      "price_cents": 1200,
+      "options": []
+    },
+    {
+      "source_number": 114,
+      "source_page": 12,
+      "name": "Carbonara",
+      "description": "Bacon, molho branco",
+      "category": "Massas",
+      "price_cents": 4200,
+      "options": [
+        {
+          "label": "Massa",
+          "values": [
+            "Fettuccine",
+            "Penne"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "source_number": 115,
+      "source_page": 12,
+      "name": "Sertaneja",
+      "description": "Carne do sol, queijo e molho branco",
+      "category": "Massas",
+      "price_cents": 4200,
+      "options": [
+        {
+          "label": "Massa",
+          "values": [
+            "Fettuccine",
+            "Penne"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "source_number": 116,
+      "source_page": 12,
+      "name": "Bolonhesa",
+      "description": "Carne moída e molho tradicional",
+      "category": "Massas",
+      "price_cents": 4000,
+      "options": [
+        {
+          "label": "Massa",
+          "values": [
+            "Fettuccine",
+            "Penne"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "source_number": 117,
+      "source_page": 12,
+      "name": "Camarão",
+      "description": "Camarão e molho branco",
+      "category": "Massas",
+      "price_cents": 4500,
+      "options": [
+        {
+          "label": "Massa",
+          "values": [
+            "Fettuccine",
+            "Penne"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "source_number": 118,
+      "source_page": 12,
+      "name": "Rústico de frango",
+      "description": "Frango, queijo, molho branco",
+      "category": "Massas",
+      "price_cents": 4200,
+      "options": [
+        {
+          "label": "Massa",
+          "values": [
+            "Fettuccine",
+            "Penne"
+          ],
+          "required": true
+        }
+      ]
+    },
+    {
+      "source_number": 119,
+      "source_page": 13,
+      "name": "Bife acebolado",
+      "description": "arroz, feijão/Baião, Macarrão, farofa e verduras",
+      "category": "Refeições",
+      "price_cents": 2800,
+      "options": []
+    },
+    {
+      "source_number": 120,
+      "source_page": 13,
+      "name": "Carne do sol trinchada",
+      "description": "arroz, feijão/Baião, Macarrão, farofa e verduras",
+      "category": "Refeições",
+      "price_cents": 2800,
+      "options": []
+    },
+    {
+      "source_number": 121,
+      "source_page": 13,
+      "name": "Bistela suíno",
+      "description": "arroz, feijão/Baião, Macarrão, farofa e verduras",
+      "category": "Refeições",
+      "price_cents": 2500,
+      "options": []
+    },
+    {
+      "source_number": 122,
+      "source_page": 13,
+      "name": "Estrogonoff de frango",
+      "description": "arroz, feijão/Baião, Macarrão, farofa e verduras",
+      "category": "Refeições",
+      "price_cents": 2500,
+      "options": []
+    },
+    {
+      "source_number": 123,
+      "source_page": 13,
+      "name": "Frango ao molho",
+      "description": "arroz, feijão/Baião, Macarrão, farofa e verduras",
+      "category": "Refeições",
+      "price_cents": 2500,
+      "options": []
+    },
+    {
+      "source_number": 124,
+      "source_page": 13,
+      "name": "Filé de frango frito",
+      "description": "arroz, feijão/Baião, Macarrão, farofa e verduras",
+      "category": "Refeições",
+      "price_cents": 2500,
+      "options": []
+    },
+    {
+      "source_number": 125,
+      "source_page": 13,
+      "name": "Calabresa, acebolado",
+      "description": "arroz, feijão/Baião, Macarrão, farofa e verduras",
+      "category": "Refeições",
+      "price_cents": 2400,
+      "options": []
+    }
+  ]
+}

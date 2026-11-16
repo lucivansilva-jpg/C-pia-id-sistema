@@ -1,0 +1,41 @@
+[
+  {
+    "cycle": false,
+    "data_type": "bigint",
+    "max_value": 9223372036854776000,
+    "min_value": 1,
+    "cache_size": 1,
+    "last_value": 1,
+    "schemaname": "public",
+    "start_value": 1,
+    "increment_by": 1,
+    "sequencename": "support_tickets_number_seq",
+    "sequenceowner": "postgres"
+  },
+  {
+    "cycle": false,
+    "data_type": "bigint",
+    "max_value": 9223372036854776000,
+    "min_value": 1,
+    "cache_size": 1,
+    "last_value": 35,
+    "schemaname": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "start_value": 1,
+    "increment_by": 1,
+    "sequencename": "orders_number_seq",
+    "sequenceowner": "postgres"
+  },
+  {
+    "cycle": false,
+    "data_type": "bigint",
+    "max_value": 9223372036854776000,
+    "min_value": 1,
+    "cache_size": 1,
+    "last_value": null,
+    "schemaname": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "start_value": 1,
+    "increment_by": 1,
+    "sequencename": "orders_number_seq",
+    "sequenceowner": "postgres"
+  }
+]

@@ -1,0 +1,1 @@
+ALTER TABLE `products` ADD `options_json` text DEFAULT '[]' NOT NULL;

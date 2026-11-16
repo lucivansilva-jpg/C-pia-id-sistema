@@ -1,0 +1,142 @@
+[
+  {
+    "id": "bb82f4e8-14df-4509-85e0-98fea0805678",
+    "instance_id": "00000000-0000-0000-0000-000000000000",
+    "aud": "authenticated",
+    "role": "authenticated",
+    "email": "platform.58288dd8-ad29-4dfa-8aff-a6e841dc5f79@users.invalid",
+    "email_confirmed_at": "2026-11-14 02:16:35.365976+00",
+    "phone": null,
+    "phone_confirmed_at": null,
+    "created_at": "2026-11-14 02:16:35.349912+00",
+    "updated_at": "2026-11-14 11:25:44.80223+00",
+    "last_sign_in_at": "2026-11-14 11:25:44.764046+00",
+    "raw_app_meta_data": {
+      "provider": "email",
+      "providers": [
+        "email"
+      ],
+      "managed_by_platform": true
+    },
+    "raw_user_meta_data": {
+      "email_verified": true
+    },
+    "is_super_admin": null,
+    "is_sso_user": false,
+    "is_anonymous": false,
+    "deleted_at": null,
+    "banned_until": null
+  },
+  {
+    "id": "eb0fe0dc-2a94-4592-9a0d-bf6468fb4345",
+    "instance_id": "00000000-0000-0000-0000-000000000000",
+    "aud": "authenticated",
+    "role": "authenticated",
+    "email": "owner.0b714921-d5dd-4ae1-bcd1-5ce24b83f237@users.invalid",
+    "email_confirmed_at": "2026-11-14 02:39:27.922571+00",
+    "phone": null,
+    "phone_confirmed_at": null,
+    "created_at": "2026-11-14 02:39:27.910662+00",
+    "updated_at": "2026-11-14 02:39:27.923426+00",
+    "last_sign_in_at": null,
+    "raw_app_meta_data": {
+      "provider": "email",
+      "providers": [
+        "email"
+      ],
+      "managed_by_platform": true
+    },
+    "raw_user_meta_data": {
+      "email_verified": true
+    },
+    "is_super_admin": null,
+    "is_sso_user": false,
+    "is_anonymous": false,
+    "deleted_at": null,
+    "banned_until": null
+  },
+  {
+    "id": "1df44fd8-9ace-47c0-b25f-887d9fc7cc53",
+    "instance_id": "00000000-0000-0000-0000-000000000000",
+    "aud": "authenticated",
+    "role": "authenticated",
+    "email": "owner.7997fd13-603d-41bc-b050-31a2acdf6791@users.invalid",
+    "email_confirmed_at": "2026-11-14 02:42:50.546182+00",
+    "phone": null,
+    "phone_confirmed_at": null,
+    "created_at": "2026-11-14 02:42:50.534225+00",
+    "updated_at": "2026-11-14 11:26:17.20715+00",
+    "last_sign_in_at": "2026-11-14 11:26:17.20251+00",
+    "raw_app_meta_data": {
+      "provider": "email",
+      "providers": [
+        "email"
+      ],
+      "managed_by_platform": true
+    },
+    "raw_user_meta_data": {
+      "email_verified": true
+    },
+    "is_super_admin": null,
+    "is_sso_user": false,
+    "is_anonymous": false,
+    "deleted_at": null,
+    "banned_until": null
+  },
+  {
+    "id": "a37a0f96-9068-40e4-90a0-b0b9dffba55f",
+    "instance_id": "00000000-0000-0000-0000-000000000000",
+    "aud": "authenticated",
+    "role": "authenticated",
+    "email": "staff.da8403b4-0d77-4c81-add2-13906682c551@users.invalid",
+    "email_confirmed_at": "2026-11-14 02:46:25.91568+00",
+    "phone": null,
+    "phone_confirmed_at": null,
+    "created_at": "2026-11-14 02:46:25.900631+00",
+    "updated_at": "2026-11-14 02:46:25.916496+00",
+    "last_sign_in_at": null,
+    "raw_app_meta_data": {
+      "provider": "email",
+      "providers": [
+        "email"
+      ],
+      "managed_by_platform": true
+    },
+    "raw_user_meta_data": {
+      "email_verified": true
+    },
+    "is_super_admin": null,
+    "is_sso_user": false,
+    "is_anonymous": false,
+    "deleted_at": null,
+    "banned_until": null
+  },
+  {
+    "id": "c017e5a8-f182-4991-9074-0e6ddf4572a2",
+    "instance_id": "00000000-0000-0000-0000-000000000000",
+    "aud": "authenticated",
+    "role": "authenticated",
+    "email": "staff.412374d3-eb85-44ac-88f4-5ceca20ad947@users.invalid",
+    "email_confirmed_at": "2026-11-14 02:47:19.525229+00",
+    "phone": null,
+    "phone_confirmed_at": null,
+    "created_at": "2026-11-14 02:47:19.521972+00",
+    "updated_at": "2026-11-14 02:48:40.975775+00",
+    "last_sign_in_at": "2026-11-14 02:48:22.578566+00",
+    "raw_app_meta_data": {
+      "provider": "email",
+      "providers": [
+        "email"
+      ],
+      "managed_by_platform": true
+    },
+    "raw_user_meta_data": {
+      "email_verified": true
+    },
+    "is_super_admin": null,
+    "is_sso_user": false,
+    "is_anonymous": false,
+    "deleted_at": null,
+    "banned_until": null
+  }
+]

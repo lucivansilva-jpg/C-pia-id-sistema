@@ -1,0 +1,362 @@
+[
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "accounts",
+    "registros": 0,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/accounts.json"
+  },
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "audit_log",
+    "registros": 0,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/audit_log.json"
+  },
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "cash_sessions",
+    "registros": 0,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/cash_sessions.json"
+  },
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "commerce_version",
+    "registros": 2,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/commerce_version.json"
+  },
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "customers",
+    "registros": 0,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/customers.json"
+  },
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "dining_tables",
+    "registros": 15,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/dining_tables.json"
+  },
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "employees",
+    "registros": 0,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/employees.json"
+  },
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "favorites",
+    "registros": 0,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/favorites.json"
+  },
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "inventory_items",
+    "registros": 0,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/inventory_items.json"
+  },
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "inventory_moves",
+    "registros": 0,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/inventory_moves.json"
+  },
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "ledger",
+    "registros": 0,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/ledger.json"
+  },
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "media",
+    "registros": 0,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/media.json"
+  },
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "orders",
+    "registros": 0,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/orders.json"
+  },
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "product_import_rows",
+    "registros": 0,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/product_import_rows.json"
+  },
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "products",
+    "registros": 0,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/products.json"
+  },
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "purchases",
+    "registros": 0,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/purchases.json"
+  },
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "recipes",
+    "registros": 0,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/recipes.json"
+  },
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "role_profiles",
+    "registros": 0,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/role_profiles.json"
+  },
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "sale_drafts",
+    "registros": 0,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/sale_drafts.json"
+  },
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "sale_return_lines",
+    "registros": 0,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/sale_return_lines.json"
+  },
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "sale_returns",
+    "registros": 0,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/sale_returns.json"
+  },
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "settings",
+    "registros": 1,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/settings.json"
+  },
+  {
+    "schema": "erp_158cd9f8679545bba83ec3e98d19255b",
+    "tabela": "suppliers",
+    "registros": 0,
+    "json": "supabase/dados/erp_158cd9f8679545bba83ec3e98d19255b/suppliers.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "accounts",
+    "registros": 0,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/accounts.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "audit_log",
+    "registros": 0,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/audit_log.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "cash_sessions",
+    "registros": 0,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/cash_sessions.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "commerce_version",
+    "registros": 2,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/commerce_version.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "customers",
+    "registros": 0,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/customers.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "dining_tables",
+    "registros": 15,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/dining_tables.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "employees",
+    "registros": 0,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/employees.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "favorites",
+    "registros": 0,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/favorites.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "inventory_items",
+    "registros": 0,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/inventory_items.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "inventory_moves",
+    "registros": 0,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/inventory_moves.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "ledger",
+    "registros": 0,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/ledger.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "media",
+    "registros": 0,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/media.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "orders",
+    "registros": 0,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/orders.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "product_import_rows",
+    "registros": 0,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/product_import_rows.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "products",
+    "registros": 0,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/products.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "purchases",
+    "registros": 0,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/purchases.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "recipes",
+    "registros": 0,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/recipes.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "role_profiles",
+    "registros": 0,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/role_profiles.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "sale_drafts",
+    "registros": 0,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/sale_drafts.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "sale_return_lines",
+    "registros": 0,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/sale_return_lines.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "sale_returns",
+    "registros": 0,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/sale_returns.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "settings",
+    "registros": 1,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/settings.json"
+  },
+  {
+    "schema": "erp_d9c47d63ff104ff6b4c92a2b3e71ace9",
+    "tabela": "suppliers",
+    "registros": 0,
+    "json": "supabase/dados/erp_d9c47d63ff104ff6b4c92a2b3e71ace9/suppliers.json"
+  },
+  {
+    "schema": "public",
+    "tabela": "access_audit",
+    "registros": 20,
+    "json": "supabase/dados/public/access_audit.json"
+  },
+  {
+    "schema": "public",
+    "tabela": "auth_login_slots",
+    "registros": 3,
+    "json": "supabase/dados/public/auth_login_slots.json"
+  },
+  {
+    "schema": "public",
+    "tabela": "business_deletions",
+    "registros": 0,
+    "json": "supabase/dados/public/business_deletions.json"
+  },
+  {
+    "schema": "public",
+    "tabela": "business_members",
+    "registros": 4,
+    "json": "supabase/dados/public/business_members.json"
+  },
+  {
+    "schema": "public",
+    "tabela": "business_presence",
+    "registros": 0,
+    "json": "supabase/dados/public/business_presence.json"
+  },
+  {
+    "schema": "public",
+    "tabela": "business_profiles",
+    "registros": 6,
+    "json": "supabase/dados/public/business_profiles.json"
+  },
+  {
+    "schema": "public",
+    "tabela": "businesses",
+    "registros": 2,
+    "json": "supabase/dados/public/businesses.json"
+  },
+  {
+    "schema": "public",
+    "tabela": "managed_registration_permits",
+    "registros": 0,
+    "json": "supabase/dados/public/managed_registration_permits.json"
+  },
+  {
+    "schema": "public",
+    "tabela": "platform_admins",
+    "registros": 1,
+    "json": "supabase/dados/public/platform_admins.json"
+  },
+  {
+    "schema": "public",
+    "tabela": "platform_setup",
+    "registros": 1,
+    "json": "supabase/dados/public/platform_setup.json"
+  },
+  {
+    "schema": "public",
+    "tabela": "support_email_outbox",
+    "registros": 0,
+    "json": "supabase/dados/public/support_email_outbox.json"
+  },
+  {
+    "schema": "public",
+    "tabela": "support_messages",
+    "registros": 0,
+    "json": "supabase/dados/public/support_messages.json"
+  },
+  {
+    "schema": "public",
+    "tabela": "support_sessions",
+    "registros": 0,
+    "json": "supabase/dados/public/support_sessions.json"
+  },
+  {
+    "schema": "public",
+    "tabela": "support_tickets",
+    "registros": 0,
+    "json": "supabase/dados/public/support_tickets.json"
+  }
+]

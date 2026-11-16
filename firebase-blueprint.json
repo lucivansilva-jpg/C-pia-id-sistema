@@ -1,0 +1,1855 @@
+{
+  "entities": {
+    "ConnectionCheck": {
+      "title": "ConnectionCheck",
+      "description": "Documento mínimo para verificação de conexão ao Firestore.",
+      "type": "object",
+      "properties": {
+        "ok": {
+          "type": "boolean",
+          "description": "Indica disponibilidade."
+        }
+      },
+      "required": ["ok"]
+    },
+    "PlatformAdmin": {
+      "title": "PlatformAdmin",
+      "description": "Administrador da plataforma autorizado a criar estabelecimentos e prestar suporte.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "name", "email", "active", "createdAt"]
+    },
+    "BusinessAccess": {
+      "title": "BusinessAccess",
+      "description": "Índice público sem dados pessoais que resolve código, CNPJ ou apelido para o identificador do estabelecimento.",
+      "type": "object",
+      "properties": {
+        "identifier": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 80,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "businessId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "code": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 32,
+          "pattern": "^[a-z0-9\\-]+$"
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["code", "alias", "cnpj"]
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["identifier", "businessId", "code", "kind", "active", "updatedAt"]
+    },
+    "UserBusiness": {
+      "title": "UserBusiness",
+      "description": "Vínculo único entre a conta do Firebase Authentication e o estabelecimento.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "businessId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "username": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 40,
+          "pattern": "^[a-z0-9][a-z0-9._-]{2,39}$"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "cashier", "waiter"]
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "businessId", "username", "role", "active", "createdAt", "updatedAt"]
+    },
+    "SupportSession": {
+      "title": "SupportSession",
+      "description": "Sessão auditada do administrador da plataforma ao acessar o ambiente de um cliente.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "businessId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "supportUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "purpose": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 500
+        },
+        "customerRequested": {
+          "type": "boolean"
+        },
+        "writeEnabled": {
+          "type": "boolean"
+        },
+        "writeReason": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "closedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "businessId", "supportUid", "purpose", "customerRequested", "writeEnabled", "active", "expiresAt", "createdAt", "updatedAt"]
+    },
+    "Business": {
+      "title": "Business",
+      "description": "Cadastro principal do estabelecimento cliente.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "code": {
+          "type": "string",
+          "minLength": 4,
+          "maxLength": 32,
+          "pattern": "^[a-z0-9\\-]+$"
+        },
+        "accessAlias": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "deleted": {
+          "type": "boolean"
+        },
+        "ownerUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "lastSeenAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "openTicketCount": {
+          "type": "integer"
+        },
+        "unreadTicketCount": {
+          "type": "integer"
+        },
+        "businessKind": {
+          "type": "string",
+          "enum": ["food", "retail"]
+        },
+        "modules": {
+          "type": "object"
+        },
+        "userLimit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "activeUserCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "name", "code", "active", "deleted", "ownerUid", "ownerName", "createdAt", "updatedAt"]
+    },
+    "Member": {
+      "title": "Member",
+      "description": "Funcionário ou proprietário vinculado a um estabelecimento, com perfil e exceções de permissão.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "businessId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "username": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 40,
+          "pattern": "^[a-z0-9][a-z0-9._-]{2,39}$"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "cashier", "waiter"]
+        },
+        "permissions": {
+          "type": "object"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "mustChangePassword": {
+          "type": "boolean"
+        },
+        "isOwner": {
+          "type": "boolean"
+        },
+        "version": {
+          "type": "integer"
+        },
+        "lastSeenAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "businessId", "name", "username", "role", "permissions", "active", "mustChangePassword", "isOwner", "version", "createdAt", "updatedAt"]
+    },
+    "RoleProfile": {
+      "title": "RoleProfile",
+      "description": "Perfil configurável de permissões por papel dentro do estabelecimento.",
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": ["admin", "cashier", "waiter"]
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "permissions": {
+          "type": "object"
+        },
+        "version": {
+          "type": "integer"
+        },
+        "updatedBy": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["role", "name", "permissions", "version", "updatedAt"]
+    },
+    "BusinessSettings": {
+      "title": "BusinessSettings",
+      "description": "Configurações operacionais e de impressão do estabelecimento.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "mode": {
+          "type": "string",
+          "enum": ["essential", "complete"]
+        },
+        "paper": {
+          "type": "integer"
+        },
+        "businessKind": {
+          "type": "string",
+          "enum": ["food", "retail"]
+        },
+        "legalName": {
+          "type": "string",
+          "maxLength": 150
+        },
+        "cnpj": {
+          "type": "string",
+          "maxLength": 14
+        },
+        "address": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "receiptMessage": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "blindClose": {
+          "type": "boolean"
+        },
+        "logoKey": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "themeColor": {
+          "type": "string",
+          "pattern": "^#[a-fA-F0-9]{6}$"
+        },
+        "modules": {
+          "type": "object"
+        },
+        "userLimit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000
+        },
+        "activeUserCount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["name", "mode", "paper", "businessKind", "blindClose", "updatedAt"]
+    },
+    "PublicMenuSettings": {
+      "title": "PublicMenuSettings",
+      "description": "Cabeçalho público sanitizado para exibição do cardápio de consulta.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "address": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "logoDataUrl": {
+          "type": "string",
+          "maxLength": 450000
+        },
+        "themeColor": {
+          "type": "string",
+          "pattern": "^#[a-fA-F0-9]{6}$"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["name", "active", "updatedAt"]
+    },
+    "PublicProduct": {
+      "title": "PublicProduct",
+      "description": "Projeção pública do produto para o cardápio de consulta, sem custos ou dados internos.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "priceCents": {
+          "type": "integer"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "options": {
+          "type": "array"
+        },
+        "imageDataUrl": {
+          "type": "string",
+          "maxLength": 450000
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "name", "priceCents", "available", "visible", "options", "updatedAt"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Cadastro completo de produto do estabelecimento.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "code": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 60
+        },
+        "priceCents": {
+          "type": "integer"
+        },
+        "imageKey": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "visible": {
+          "type": "boolean"
+        },
+        "options": {
+          "type": "array"
+        },
+        "addons": {
+          "type": "array"
+        },
+        "quickNotes": {
+          "type": "array"
+        },
+        "barcode": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "saleUnit": {
+          "type": "string",
+          "enum": ["un", "pct", "lata", "garrafa", "frasco", "pote", "par"]
+        },
+        "packaging": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "stockMode": {
+          "type": "string",
+          "enum": ["none", "unit", "recipe"]
+        },
+        "finishedInventoryId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "trackStock": {
+          "type": "boolean"
+        },
+        "costMode": {
+          "type": "string",
+          "enum": ["direct", "recipe"]
+        },
+        "version": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "code", "name", "priceCents", "active", "available", "visible", "options", "addons", "quickNotes", "saleUnit", "stockMode", "trackStock", "costMode", "version", "createdAt", "updatedAt"]
+    },
+    "MediaAsset": {
+      "title": "MediaAsset",
+      "description": "Imagem comprimida de produto ou logomarca armazenada dentro do limite do Firestore.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "mime": {
+          "type": "string",
+          "enum": ["image/jpeg", "image/png", "image/webp"]
+        },
+        "size": {
+          "type": "integer"
+        },
+        "dataUrl": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 450000
+        },
+        "createdBy": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["key", "mime", "size", "dataUrl", "createdBy", "createdAt"]
+    },
+    "DiningTable": {
+      "title": "DiningTable",
+      "description": "Mesa cadastrada do salão.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "number": {
+          "type": "integer"
+        },
+        "seats": {
+          "type": "integer"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "number", "active", "createdAt"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Comanda, pedido de mesa ou venda direta.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "number": {
+          "type": "integer"
+        },
+        "requestKey": {
+          "type": "string",
+          "minLength": 12,
+          "maxLength": 80,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "tableNumber": {
+          "type": "integer"
+        },
+        "state": {
+          "type": "string",
+          "enum": ["open", "closed", "cancelled"]
+        },
+        "fulfillment": {
+          "type": "string",
+          "enum": ["pending", "delivered"]
+        },
+        "items": {
+          "type": "array"
+        },
+        "totalCents": {
+          "type": "integer"
+        },
+        "discountCents": {
+          "type": "integer"
+        },
+        "discountReason": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "authorizedBy": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "actorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "attendantName": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "customerId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "customerName": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "checkoutWaiting": {
+          "type": "boolean"
+        },
+        "checkoutHeldAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "checkoutHeldBy": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "exchangeFromOrderId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "paidCents": {
+          "type": "integer"
+        },
+        "lastLedgerId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "refundCents": {
+          "type": "integer"
+        },
+        "version": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "closedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "number", "requestKey", "state", "fulfillment", "items", "totalCents", "discountCents", "actorId", "attendantName", "checkoutWaiting", "version", "createdAt", "updatedAt"]
+    },
+    "SaleDraft": {
+      "title": "SaleDraft",
+      "description": "Venda guardada em espera pelo usuário do balcão/atendimento.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "requestKey": {
+          "type": "string",
+          "minLength": 12,
+          "maxLength": 80,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "items": {
+          "type": "array"
+        },
+        "state": {
+          "type": "string",
+          "enum": ["waiting", "converted", "discarded"]
+        },
+        "convertedOrderId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "version": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "requestKey", "ownerId", "title", "items", "state", "version", "createdAt", "updatedAt"]
+    },
+    "UserFavorites": {
+      "title": "UserFavorites",
+      "description": "Produtos favoritos do usuário no estabelecimento.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "productIds": {
+          "type": "array"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "productIds", "updatedAt"]
+    },
+    "CashSession": {
+      "title": "CashSession",
+      "description": "Sessão de caixa com abertura, conferência e fechamento.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 12,
+          "maxLength": 80,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "openingCents": {
+          "type": "integer"
+        },
+        "countedCents": {
+          "type": "integer"
+        },
+        "expectedCents": {
+          "type": "integer"
+        },
+        "differenceCents": {
+          "type": "integer"
+        },
+        "countedMethods": {
+          "type": "object"
+        },
+        "expectedMethods": {
+          "type": "object"
+        },
+        "differenceMethods": {
+          "type": "object"
+        },
+        "cashBalanceCents": {
+          "type": "integer"
+        },
+        "methodTotals": {
+          "type": "object"
+        },
+        "version": {
+          "type": "integer"
+        },
+        "state": {
+          "type": "string",
+          "enum": ["open", "closed"]
+        },
+        "actorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "openedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "closedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "openingCents", "state", "actorId", "openedAt", "updatedAt"]
+    },
+    "LedgerEntry": {
+      "title": "LedgerEntry",
+      "description": "Lançamento financeiro (venda, estorno, sangria, suprimento, despesa, liquidação de conta).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "requestKey": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128
+        },
+        "sessionId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "orderId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "accountId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "reversalOf": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["sale", "refund", "supply", "withdrawal", "expense", "payable", "receivable", "fee"]
+        },
+        "method": {
+          "type": "string",
+          "enum": ["cash", "pix", "credit", "debit", "card", "bank", "exchange_credit"]
+        },
+        "amountCents": {
+          "type": "integer"
+        },
+        "tenderedCents": {
+          "type": "integer"
+        },
+        "refundedCents": {
+          "type": "integer"
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "reason": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "financeAccount": {
+          "type": "string",
+          "enum": ["drawer", "bank", "internal"]
+        },
+        "actorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "authorizedBy": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "reconciledAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "externalReference": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "reconciledBy": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "requestKey", "kind", "method", "amountCents", "description", "category", "financeAccount", "actorId", "createdAt", "updatedAt"]
+    },
+    "FinancialAccount": {
+      "title": "FinancialAccount",
+      "description": "Conta a pagar ou a receber do estabelecimento.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "requestKey": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["payable", "receivable"]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "amountCents": {
+          "type": "integer"
+        },
+        "dueDate": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "state": {
+          "type": "string",
+          "enum": ["pending", "settled"]
+        },
+        "category": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "recurrence": {
+          "type": "string",
+          "enum": ["weekly", "monthly"]
+        },
+        "recurrenceParentId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "actorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "settledAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "requestKey", "kind", "title", "amountCents", "dueDate", "state", "category", "actorId", "createdAt", "updatedAt"]
+    },
+    "Customer": {
+      "title": "Customer",
+      "description": "Cadastro de cliente do estabelecimento (contém dados pessoais restritos ao caixa e administrador).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "email": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "document": {
+          "type": "string",
+          "maxLength": 14
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "version": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "name", "active", "version", "createdAt", "updatedAt"]
+    },
+    "Supplier": {
+      "title": "Supplier",
+      "description": "Fornecedor de mercadorias e insumos.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "document": {
+          "type": "string",
+          "maxLength": 30
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "name", "active", "createdAt", "updatedAt"]
+    },
+    "InventoryItem": {
+      "title": "InventoryItem",
+      "description": "Insumo ou mercadoria controlada com custo unitário restrito à gestão.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "unit": {
+          "type": "string",
+          "enum": ["g", "ml", "un"]
+        },
+        "minimumMilli": {
+          "type": "integer"
+        },
+        "unitCostMicro": {
+          "type": "integer"
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "name", "unit", "minimumMilli", "active", "createdAt", "updatedAt"]
+    },
+    "InventoryStock": {
+      "title": "InventoryStock",
+      "description": "Saldo quantitativo de estoque separado dos custos unitários para permitir baixa automática em vendas.",
+      "type": "object",
+      "properties": {
+        "itemId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "balanceMilli": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["itemId", "balanceMilli", "updatedAt"]
+    },
+    "InventoryMove": {
+      "title": "InventoryMove",
+      "description": "Movimentação imutável de entrada, perda, contagem, compra, venda ou devolução no estoque.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "requestKey": {
+          "type": "string",
+          "minLength": 5,
+          "maxLength": 128
+        },
+        "itemId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "quantityMilli": {
+          "type": "integer"
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["entry", "loss", "count", "purchase", "sale", "return"]
+        },
+        "sourceId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "actorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "requestKey", "itemId", "quantityMilli", "kind", "reason", "actorId", "createdAt"]
+    },
+    "Recipe": {
+      "title": "Recipe",
+      "description": "Composição de insumos vinculada ao produto.",
+      "type": "object",
+      "properties": {
+        "productId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "items": {
+          "type": "array"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["productId", "items", "updatedAt"]
+    },
+    "Purchase": {
+      "title": "Purchase",
+      "description": "Pedido e recebimento de compra de mercadorias/insumos.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "requestKey": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128
+        },
+        "supplierId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "supplierName": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "items": {
+          "type": "array"
+        },
+        "totalCents": {
+          "type": "integer"
+        },
+        "dueDate": {
+          "type": "string",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "state": {
+          "type": "string",
+          "enum": ["draft", "received"]
+        },
+        "actorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "receivedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "requestKey", "items", "totalCents", "dueDate", "state", "actorId", "createdAt"]
+    },
+    "SaleReturn": {
+      "title": "SaleReturn",
+      "description": "Registro imutável de devolução ou troca de mercadorias.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "requestKey": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128
+        },
+        "fingerprint": {
+          "type": "string",
+          "minLength": 32,
+          "maxLength": 128
+        },
+        "orderId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["return", "exchange"]
+        },
+        "items": {
+          "type": "array"
+        },
+        "lines": {
+          "type": "array"
+        },
+        "amountCents": {
+          "type": "integer"
+        },
+        "restoredCostCents": {
+          "type": "integer"
+        },
+        "unknownCostQuantity": {
+          "type": "integer"
+        },
+        "originalClosedAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "replacementOrderId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "actorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 200
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "requestKey", "fingerprint", "orderId", "kind", "items", "lines", "amountCents", "restoredCostCents", "unknownCostQuantity", "originalClosedAt", "actorId", "reason", "createdAt"]
+    },
+    "AuditLog": {
+      "title": "AuditLog",
+      "description": "Registro de auditoria append-only por estabelecimento.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "actorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "action": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 240
+        },
+        "entityId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "details": {
+          "type": "object"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "actorId", "action", "entityId", "createdAt"]
+    },
+    "Counter": {
+      "title": "Counter",
+      "description": "Contador sequencial atômico por estabelecimento.",
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["value", "updatedAt"]
+    },
+    "SupportTicket": {
+      "title": "SupportTicket",
+      "description": "Chamado de suporte aberto pelo estabelecimento.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "businessId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "number": {
+          "type": "integer"
+        },
+        "requestKey": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128
+        },
+        "requesterUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "requesterName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "subject": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 120
+        },
+        "category": {
+          "type": "string",
+          "enum": ["error", "question", "suggestion", "complaint"]
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["normal", "urgent"]
+        },
+        "status": {
+          "type": "string",
+          "enum": ["open", "in_progress", "waiting_customer", "resolved"]
+        },
+        "version": {
+          "type": "integer"
+        },
+        "lastCustomerAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "lastSupportAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "customerSeenAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "supportSeenAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "businessId", "number", "requestKey", "requesterUid", "requesterName", "subject", "category", "priority", "status", "version", "createdAt", "updatedAt"]
+    },
+    "TicketMessage": {
+      "title": "TicketMessage",
+      "description": "Mensagem de atendimento em um chamado de suporte.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "requestKey": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 128
+        },
+        "side": {
+          "type": "string",
+          "enum": ["customer", "platform"]
+        },
+        "actorUid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "actorName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "body": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "requestKey", "side", "actorUid", "actorName", "body", "createdAt"]
+    },
+    "PrivateProductCost": {
+      "title": "PrivateProductCost",
+      "description": "Custo unitário e custos de adicionais isolados do catálogo público.",
+      "type": "object",
+      "properties": {
+        "costCents": {
+          "type": "integer"
+        },
+        "addonCosts": {
+          "type": "object"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["costCents", "updatedAt"]
+    },
+    "IdempotencyRecord": {
+      "title": "IdempotencyRecord",
+      "description": "Registro determinístico de idempotência para impedir duplicação em concorrência.",
+      "type": "object",
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 60
+        },
+        "fingerprint": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "targetId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "actorId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "result": {
+          "type": "object"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["key", "kind", "targetId", "actorId", "createdAt"]
+    },
+    "ResourceLock": {
+      "title": "ResourceLock",
+      "description": "Trava atômica de sessão de caixa única ou ocupação de mesa.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["cash_session", "table"]
+        },
+        "resourceId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "active": {
+          "type": "boolean"
+        },
+        "ownerId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "orderNumber": {
+          "type": "integer"
+        },
+        "attendantName": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "version": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "kind", "active", "version", "updatedAt"]
+    }
+  },
+  "firestore": {
+    "/test/{docId}": {
+      "schema": { "$ref": "#/entities/ConnectionCheck" },
+      "description": "Verificação de conectividade inicial do Firestore."
+    },
+    "/platformAdmins/{uid}": {
+      "schema": { "$ref": "#/entities/PlatformAdmin" },
+      "description": "Perfis de administrador da plataforma."
+    },
+    "/businessAccess/{identifier}": {
+      "schema": { "$ref": "#/entities/BusinessAccess" },
+      "description": "Resolução de código, apelido ou CNPJ para identificação do estabelecimento."
+    },
+    "/userBusinesses/{uid}": {
+      "schema": { "$ref": "#/entities/UserBusiness" },
+      "description": "Mapeamento direto do UID do Firebase Auth para o estabelecimento."
+    },
+    "/supportSessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/SupportSession" },
+      "description": "Sessões auditadas de suporte do administrador da plataforma."
+    },
+    "/businesses/{businessId}": {
+      "schema": { "$ref": "#/entities/Business" },
+      "description": "Dados principais de cada estabelecimento cliente."
+    },
+    "/businesses/{businessId}/members/{uid}": {
+      "schema": { "$ref": "#/entities/Member" },
+      "description": "Usuários (proprietário e funcionários) vinculados ao estabelecimento."
+    },
+    "/businesses/{businessId}/profiles/{role}": {
+      "schema": { "$ref": "#/entities/RoleProfile" },
+      "description": "Perfis editáveis de permissões do estabelecimento."
+    },
+    "/businesses/{businessId}/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/BusinessSettings" },
+      "description": "Configurações operacionais e de cupom do estabelecimento."
+    },
+    "/businesses/{businessId}/publicSettings/{docId}": {
+      "schema": { "$ref": "#/entities/PublicMenuSettings" },
+      "description": "Dados públicos do cabeçalho do cardápio para consulta."
+    },
+    "/businesses/{businessId}/publicProducts/{productId}": {
+      "schema": { "$ref": "#/entities/PublicProduct" },
+      "description": "Projeção pública dos produtos para o cardápio de consulta."
+    },
+    "/businesses/{businessId}/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Catálogo completo de produtos do estabelecimento."
+    },
+    "/businesses/{businessId}/products/{productId}/private/{docId}": {
+      "schema": { "$ref": "#/entities/PrivateProductCost" },
+      "description": "Documento privado de custos de produto e adicionais."
+    },
+    "/businesses/{businessId}/media/{mediaId}": {
+      "schema": { "$ref": "#/entities/MediaAsset" },
+      "description": "Fotos comprimidas de produtos e logomarca."
+    },
+    "/businesses/{businessId}/tables/{tableId}": {
+      "schema": { "$ref": "#/entities/DiningTable" },
+      "description": "Mesas do salão do estabelecimento."
+    },
+    "/businesses/{businessId}/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Comandas, pedidos de mesas e vendas diretas."
+    },
+    "/businesses/{businessId}/drafts/{draftId}": {
+      "schema": { "$ref": "#/entities/SaleDraft" },
+      "description": "Vendas guardadas em espera."
+    },
+    "/businesses/{businessId}/favorites/{uid}": {
+      "schema": { "$ref": "#/entities/UserFavorites" },
+      "description": "Produtos favoritos por usuário."
+    },
+    "/businesses/{businessId}/cashSessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/CashSession" },
+      "description": "Sessões de abertura e fechamento de caixa."
+    },
+    "/businesses/{businessId}/ledger/{entryId}": {
+      "schema": { "$ref": "#/entities/LedgerEntry" },
+      "description": "Livro-caixa e movimentações financeiras."
+    },
+    "/businesses/{businessId}/accounts/{accountId}": {
+      "schema": { "$ref": "#/entities/FinancialAccount" },
+      "description": "Contas a pagar e a receber."
+    },
+    "/businesses/{businessId}/customers/{customerId}": {
+      "schema": { "$ref": "#/entities/Customer" },
+      "description": "Clientes cadastrados do estabelecimento."
+    },
+    "/businesses/{businessId}/suppliers/{supplierId}": {
+      "schema": { "$ref": "#/entities/Supplier" },
+      "description": "Fornecedores cadastrados do estabelecimento."
+    },
+    "/businesses/{businessId}/inventoryItems/{itemId}": {
+      "schema": { "$ref": "#/entities/InventoryItem" },
+      "description": "Insumos e mercadorias com custos restritos."
+    },
+    "/businesses/{businessId}/inventoryStock/{itemId}": {
+      "schema": { "$ref": "#/entities/InventoryStock" },
+      "description": "Saldo quantitativo de estoque por item."
+    },
+    "/businesses/{businessId}/inventoryMoves/{moveId}": {
+      "schema": { "$ref": "#/entities/InventoryMove" },
+      "description": "Movimentações de estoque."
+    },
+    "/businesses/{businessId}/recipes/{productId}": {
+      "schema": { "$ref": "#/entities/Recipe" },
+      "description": "Fichas técnicas de produtos."
+    },
+    "/businesses/{businessId}/purchases/{purchaseId}": {
+      "schema": { "$ref": "#/entities/Purchase" },
+      "description": "Compras e recebimentos de estoque."
+    },
+    "/businesses/{businessId}/returns/{returnId}": {
+      "schema": { "$ref": "#/entities/SaleReturn" },
+      "description": "Devoluções e trocas registradas."
+    },
+    "/businesses/{businessId}/auditLogs/{auditId}": {
+      "schema": { "$ref": "#/entities/AuditLog" },
+      "description": "Trilha de auditoria append-only por estabelecimento."
+    },
+    "/businesses/{businessId}/counters/{counterName}": {
+      "schema": { "$ref": "#/entities/Counter" },
+      "description": "Contadores numéricos por estabelecimento."
+    },
+    "/businesses/{businessId}/idempotency/{keyId}": {
+      "schema": { "$ref": "#/entities/IdempotencyRecord" },
+      "description": "Chaves determinísticas de idempotência por operação."
+    },
+    "/businesses/{businessId}/locks/{lockId}": {
+      "schema": { "$ref": "#/entities/ResourceLock" },
+      "description": "Travas transacionais para sessão de caixa e ocupação de mesa."
+    },
+    "/businesses/{businessId}/tickets/{ticketId}": {
+      "schema": { "$ref": "#/entities/SupportTicket" },
+      "description": "Chamados de suporte abertos pelo estabelecimento."
+    },
+    "/businesses/{businessId}/tickets/{ticketId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/TicketMessage" },
+      "description": "Mensagens de um chamado de suporte."
+    }
+  }
+}

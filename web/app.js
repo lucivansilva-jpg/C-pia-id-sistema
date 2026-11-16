@@ -38,6 +38,7 @@ const {
     orderBy,
     limit,
     writeBatch,
+    runTransaction,
     serverTimestamp,
     Timestamp
   }
@@ -181,10 +182,11 @@ async function firestoreRequest(path, options = {}) {
     }
     const perms = permissionOverrides(body.permissions || {}, role);
     const email = staffAuthEmail(username, businessCode);
+    await fb.checkMemberCapacity(businessId);
     const newUid = await provisionAuthAccount(email, password);
 
     const auditId = crypto.randomUUID();
-    const cleanBatch = writeBatch(db);
+    const cleanBatch = fb.memberBatch(businessId, newUid, {email,password});
     cleanBatch.set(doc(db, 'userBusinesses', newUid), {
       uid: newUid,
       businessId,
@@ -254,7 +256,7 @@ async function firestoreRequest(path, options = {}) {
     }
     const perms = permissionOverrides(body.permissions || {}, role);
     const auditId = crypto.randomUUID();
-    const batch = writeBatch(db);
+    const batch = fb.memberBatch(businessId, uid);
     batch.update(memberRef, {
       name,
       role,
@@ -278,6 +280,37 @@ async function firestoreRequest(path, options = {}) {
     });
     await batch.commit().catch((err) => handleFirestoreError(err, OperationType.UPDATE, memberRef.path));
     return { ok: true };
+  }
+
+  const contractMatch=path.match(/^\/platform\/businesses\/([^/]+)\/contract$/);
+  if(contractMatch && method==='PUT'){
+    if(!current?.platform || !isPlatformToken(auth.currentUser))throw Error('Somente o administrador da plataforma pode alterar o contrato.');
+    const id=contractMatch[1], sr=doc(db,'businesses',id,'settings','main');
+    const kind=String(body.business_kind||'');
+    if(!['food','retail'].includes(kind))throw Error('Modalidade inválida.');
+    const mods=IDContract.normalize(body.modules,kind), userLimit=IDContract.limit(body.user_limit);
+    // Existing tenants need an explicit isolated migration, never an automatic production scan/write.
+    const existingContract=await getDoc(sr);
+    const previousModules=IDContract.modules(existingContract.data()||{});
+    const reducing=Object.keys(mods).some(k=>previousModules[k]&&!mods[k]) || existingContract.data()?.businessKind!==kind;
+    if(reducing){
+      const [sessions,orders,members,products,accounts]=await Promise.all(['cashSessions','orders','members','products','accounts'].map(c=>getDocs(collection(db,'businesses',id,c))));
+      if(sessions.docs.some(d=>d.data().state==='open'))throw Error('Feche o caixa antes de reduzir módulos ou mudar a modalidade.');
+      if(orders.docs.some(d=>d.data().state==='open'||d.data().fulfillment==='pending'))throw Error('Conclua as comandas e entregas pendentes antes de reduzir módulos.');
+      if(!mods.tables&&members.docs.some(d=>d.data().active&&d.data().role==='waiter'))throw Error('Altere o perfil ou desative os garçons antes de retirar Mesas e atendimento.');
+      if(!mods.inventory&&products.docs.some(d=>d.data().active&&d.data().stockMode!=='none'))throw Error('Desative o controle de estoque dos produtos antes de retirar Estoque e compras.');
+      if(!mods.finance&&accounts.docs.some(d=>d.data().state==='pending'))throw Error('Resolva as contas financeiras pendentes antes de retirar o Financeiro.');
+    }
+    const auditId=crypto.randomUUID();
+    await runTransaction(db,async tx=>{
+      const snap=await tx.get(sr);if(!snap.exists())throw Error('Configure o estabelecimento antes do contrato.');
+      const previous=snap.data();
+      if(previous.activeUserCount==null)throw Error('Cadastro legado: execute primeiro a migração explícita de contagem em ambiente isolado. Nenhum acesso foi alterado.');
+      if(userLimit<previous.activeUserCount)throw Error('Desative usuários antes de reduzir o limite. Ativos: '+previous.activeUserCount);
+      if(previous.businessKind!==existingContract.data().businessKind || JSON.stringify(previous.modules)!==JSON.stringify(existingContract.data().modules))throw Error('O contrato foi alterado. Atualize a tela antes de salvar.');
+      tx.update(sr,{modules:mods,userLimit,businessKind:kind,updatedAt:serverTimestamp()});
+      tx.set(doc(db,'businesses',id,'auditLogs',auditId),{id:auditId,actorId:auth.currentUser.uid,action:'business.contract.update',entityId:id,details:{previous:{modules:previous.modules??null,userLimit:previous.userLimit??null},modules:mods,userLimit},createdAt:serverTimestamp()});
+    });return {ok:true};
   }
 
   if (path === '/business-access' || /^\/platform\/businesses\/[^/]+$/.test(path)) {
@@ -312,6 +345,10 @@ async function firestoreRequest(path, options = {}) {
           active: !!b.active,
           business_kind: businessKind,
           kind_pending: current.platform && isPlatformBizRoute ? !businessKind : false,
+          modules: settingsSnap?.data()?.modules ?? null,
+          user_limit: settingsSnap?.data()?.userLimit ?? null,
+          active_user_count: membersSnap.docs?.filter(d=>d.data().active).length || 0,
+          contract_ready: settingsSnap?.data()?.activeUserCount != null,
           users: membersSnap.size || 0,
           products: productsSnap.size || 0,
           movements: movementsCount,
@@ -321,7 +358,7 @@ async function firestoreRequest(path, options = {}) {
     }
 
     if (method === 'PUT') {
-      if (path === '/business-access' && body.business_kind !== undefined) {
+      if (path === '/business-access' && ['business_kind','modules','user_limit','userLimit','activeUserCount'].some(k=>Object.hasOwn(body,k))) {
         throw new Error('Somente o administrador da plataforma pode definir a modalidade do sistema.');
       }
       const bizSnap = await getDoc(bizRef).catch((err) =>
@@ -345,6 +382,7 @@ async function firestoreRequest(path, options = {}) {
         }
         currentSettingsSnap = await getDoc(settingsRef).catch(() => null);
       }
+      if(nextKind && currentSettingsSnap?.data()?.modules && currentSettingsSnap.data().businessKind!==nextKind)throw Error('Altere a modalidade pelo contrato, após conferir dependências.');
       const nextActive = current.platform && typeof body.active === 'boolean' ? body.active : old.active;
 
       if (newAlias && newAlias !== old.code) {
@@ -477,6 +515,8 @@ async function firestoreRequest(path, options = {}) {
     }
     const name = String(body.name || '').trim().slice(0, 100);
     const businessKind = String(body.business_kind || '').trim();
+    const contractModules = IDContract.normalize(body.modules, businessKind);
+    const userLimit = IDContract.limit(body.user_limit);
     const ownerName = String(body.owner_name || '').trim().slice(0, 100);
     const username = String(body.username || '').trim().toLowerCase();
     const password = String(body.password || '');
@@ -566,6 +606,9 @@ async function firestoreRequest(path, options = {}) {
       mode: 'essential',
       paper: 80,
       businessKind,
+      modules:contractModules,
+      userLimit,
+      activeUserCount:1,
       legalName: '',
       cnpj: '',
       address: '',
@@ -600,7 +643,7 @@ async function firestoreRequest(path, options = {}) {
       actorId: auth.currentUser.uid,
       action: 'business.create',
       entityId: businessId,
-      details: { code: businessCode, ownerUsername: username, businessKind },
+      details: { code: businessCode, ownerUsername: username, businessKind, modules:contractModules, userLimit },
       createdAt: serverTimestamp()
     });
 
@@ -927,7 +970,7 @@ for (const button of document.querySelectorAll('.logout')) {
 async function team() {
   const data = await api('/members');
   people = data.members;
-  $('#members').innerHTML = people
+  $('#members').innerHTML = `<p class="small">Usuários ativos: ${people.filter(p=>p.active).length}${current.business.user_limit!=null?' / '+current.business.user_limit:' · contrato legado preservado'}. O proprietário ocupa uma vaga.</p>` + people
     .map(
       (p) =>
         `<div class="member-row"><div><strong>${esc(p.display_name)}</strong><small>${esc(
@@ -950,6 +993,7 @@ async function team() {
 
 function permissionsHtml(role, values = {}) {
   return catalog
+    .filter(p=>!window.IDContract||IDContract.allowed({modules:current?.business?.modules,businessKind:current?.business?.business_kind},p.id))
     .map((p) => {
       if (!p.roles.includes(role) || role === 'admin') {
         return `<div class="permissions-row"><span>${esc(p.label)}</span><small>${
@@ -972,7 +1016,7 @@ function permissionsHtml(role, values = {}) {
 function editor(id = null) {
   editing = people.find((p) => p.user_id === id) || null;
   const form = $('#memberForm');
-  const isRetail = current?.business?.business_kind === 'retail';
+  const isRetail = current?.business?.business_kind === 'retail' || (current?.business?.modules && !current.business.modules.tables);
   form.reset();
   form.elements.name.value = editing?.display_name || '';
   form.elements.username.value = editing?.username || '';
@@ -1074,6 +1118,9 @@ let loadBusinesses = async () => {};
 $('#createBusiness').onclick = () => {
   $('#businessForm').reset();
   $('#platformEditor .dialog-error').textContent = '';
+  $('#businessForm [data-contract]')?.remove();
+  $('#businessForm').elements.business_kind.closest('label').insertAdjacentHTML('afterend',IDContract.fields({modules:{},businessKind:'food',userLimit:1},1));
+  $('#businessForm').elements.business_kind.onchange=()=>IDContract.updateKind($('#businessForm'));
   $('#platformEditor').showModal();
 };
 
@@ -1086,7 +1133,7 @@ $('#businessForm').onsubmit = async (e) => {
     const f = new FormData(form);
     const data = await api('/platform/businesses', {
       method: 'POST',
-      body: JSON.stringify(Object.fromEntries(f))
+      body: JSON.stringify({...Object.fromEntries(f),...IDContract.read(form)})
     });
     form.elements.password.value = '';
     $('#platformEditor').close();

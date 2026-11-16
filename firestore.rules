@@ -96,6 +96,28 @@ service cloud.firestore {
       return businessKind(businessId) == 'retail';
     }
 
+    function validModules(mods) {
+      return mods is map && mods.keys().hasOnly(['tables','finance','inventory','costs'])
+        && mods.keys().hasAll(['tables','finance','inventory','costs'])
+        && mods.tables is bool && mods.finance is bool && mods.inventory is bool && mods.costs is bool;
+    }
+    function quotaChange(businessId, uid, delta) {
+      let before = exists(settingsPath(businessId)) ? get(settingsPath(businessId)).data : {};
+      let after = getAfter(settingsPath(businessId)).data;
+      return before.get('userLimit', null) == null || (after.get('activeUserChangeUid','') == uid
+        && after.activeUserCount == before.activeUserCount + delta
+        && after.activeUserCount >= 1 && after.activeUserCount <= after.userLimit);
+    }
+    function validQuotaCounter(businessId) {
+      let uid = incoming().get('activeUserChangeUid','');
+      let path = memberPath(businessId, uid);
+      let before = exists(path) ? get(path).data.get('active',false) : false;
+      let after = getAfter(path).data.active;
+      return isValidId(uid) && after != before
+        && incoming().activeUserCount == existing().activeUserCount + (after ? 1 : -1)
+        && incoming().activeUserCount >= 1 && incoming().activeUserCount <= existing().userLimit;
+    }
+
     function hasModule(businessId, mod) {
       let s = exists(settingsPath(businessId)) ? get(settingsPath(businessId)).data : {};
       let mods = s.get('modules', null);
@@ -355,9 +377,10 @@ service cloud.firestore {
         && isValidId(data.ownerUid)
         && isNonEmptyString(data.ownerName, 1, 100)
         && (data.get('businessKind', null) == null || data.businessKind in ['food', 'retail'])
-        && (data.get('modules', null) == null || data.modules is map)
+        && (data.get('modules', null) == null || validModules(data.modules))
         && isOptionalIntRange(data.get('userLimit', null), 1, 1000000)
         && isOptionalIntRange(data.get('activeUserCount', null), 0, 1000000)
+        && isOptionalId(data.get('activeUserChangeUid', null))
         && isOptionalTimestamp(data.get('lastSeenAt', null))
         && isOptionalIntRange(data.get('openTicketCount', null), 0, 100000)
         && isOptionalIntRange(data.get('unreadTicketCount', null), 0, 100000)
@@ -399,14 +422,15 @@ service cloud.firestore {
     function isValidSettings(value) {
       let data = value;
       return data.keys().hasAll(['name', 'mode', 'paper', 'businessKind', 'blindClose', 'updatedAt'])
-        && data.keys().hasOnly(['name', 'mode', 'paper', 'businessKind', 'modules', 'userLimit', 'activeUserCount', 'legalName', 'cnpj', 'address', 'phone', 'receiptMessage', 'blindClose', 'logoKey', 'themeColor', 'updatedAt'])
+        && data.keys().hasOnly(['name', 'mode', 'paper', 'businessKind', 'modules', 'userLimit', 'activeUserCount', 'activeUserChangeUid', 'legalName', 'cnpj', 'address', 'phone', 'receiptMessage', 'blindClose', 'logoKey', 'themeColor', 'updatedAt'])
         && isNonEmptyString(data.name, 1, 80)
         && data.mode in ['essential', 'complete']
         && data.paper in [58, 80]
         && data.businessKind in ['food', 'retail']
-        && (data.get('modules', null) == null || data.modules is map)
+        && (data.get('modules', null) == null || validModules(data.modules))
         && isOptionalIntRange(data.get('userLimit', null), 1, 1000000)
         && isOptionalIntRange(data.get('activeUserCount', null), 0, 1000000)
+        && isOptionalId(data.get('activeUserChangeUid', null))
         && isOptionalString(data.get('legalName', null), 150)
         && isOptionalString(data.get('cnpj', null), 14)
         && isOptionalString(data.get('address', null), 300)
@@ -990,12 +1014,7 @@ service cloud.firestore {
           && incoming().updatedAt == request.time
           && (!isRetail(businessId) || incoming().role != 'waiter')
           && (incoming().role != 'waiter' || hasModule(businessId, 'tables'))
-          && (
-            isPlatformAdmin()
-            || get(settingsPath(businessId)).data.get('userLimit', null) == null
-            || incoming().active == false
-            || getAfter(settingsPath(businessId)).data.get('activeUserCount', 0) <= getAfter(settingsPath(businessId)).data.get('userLimit', 1000000)
-          )
+          && (incoming().active == false || quotaChange(businessId, uid, 1))
           && (isPlatformAdmin() || (isTenantAdmin(businessId) && incoming().isOwner == false));
         allow update: if resource != null && isValidId(businessId) && isValidId(uid)
           && isValidMember(incoming(), businessId, uid)
@@ -1007,13 +1026,7 @@ service cloud.firestore {
           && incoming().updatedAt == request.time
           && (!isRetail(businessId) || incoming().role != 'waiter' || (existing().role == 'waiter' && incoming().active == false))
           && (incoming().role != 'waiter' || hasModule(businessId, 'tables') || (existing().role == 'waiter' && incoming().active == false))
-          && (
-            isPlatformAdmin()
-            || get(settingsPath(businessId)).data.get('userLimit', null) == null
-            || incoming().active == false
-            || existing().active == true
-            || getAfter(settingsPath(businessId)).data.get('activeUserCount', 0) <= getAfter(settingsPath(businessId)).data.get('userLimit', 1000000)
-          )
+          && (incoming().active == existing().active || quotaChange(businessId, uid, incoming().active ? 1 : -1))
           && (
             (isPlatformAdmin() && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'role', 'permissions', 'active', 'mustChangePassword', 'version', 'lastSeenAt', 'updatedAt']))
             || (isTenantAdmin(businessId) && !(existing().isOwner && request.auth.uid != uid) && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'role', 'permissions', 'active', 'version', 'updatedAt']))
@@ -1052,14 +1065,14 @@ service cloud.firestore {
           && incoming().updatedAt == request.time
           && (
             isPlatformAdmin()
-            || (hasTenantPerm(businessId, 'settings.manage') && incoming().businessKind == 'food')
+            || (hasTenantPerm(businessId, 'settings.manage') && incoming().businessKind == 'food' && !incoming().keys().hasAny(['modules','userLimit','activeUserCount','activeUserChangeUid']))
           );
         allow update: if resource != null && isValidId(businessId) && isValidId(settingId) && settingId == 'main'
           && isValidSettings(incoming())
           && incoming().updatedAt == request.time
-          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'mode', 'paper', 'businessKind', 'modules', 'userLimit', 'activeUserCount', 'legalName', 'cnpj', 'address', 'phone', 'receiptMessage', 'blindClose', 'logoKey', 'themeColor', 'updatedAt'])
+          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'mode', 'paper', 'businessKind', 'modules', 'userLimit', 'activeUserCount', 'activeUserChangeUid', 'legalName', 'cnpj', 'address', 'phone', 'receiptMessage', 'blindClose', 'logoKey', 'themeColor', 'updatedAt'])
           && (
-            (isPlatformAdmin() && (incoming().get('userLimit', null) == null || existing().get('activeUserCount', null) == null || incoming().userLimit >= existing().activeUserCount))
+            (isPlatformAdmin() && (incoming().get('userLimit', null) == null || incoming().userLimit >= incoming().get('activeUserCount',0)))
             || (
               hasTenantPerm(businessId, 'settings.manage')
               && (
@@ -1069,11 +1082,10 @@ service cloud.firestore {
               && incoming().get('modules', null) == existing().get('modules', null)
               && incoming().get('userLimit', null) == existing().get('userLimit', null)
               && (
-                incoming().get('activeUserCount', null) == existing().get('activeUserCount', null)
-                || (
-                  incoming().diff(existing()).affectedKeys().hasOnly(['activeUserCount', 'updatedAt'])
-                  && (existing().get('userLimit', null) == null || incoming().activeUserCount <= existing().userLimit)
-                )
+                (incoming().get('activeUserCount', null) == existing().get('activeUserCount', null)
+                  && incoming().get('activeUserChangeUid', null) == existing().get('activeUserChangeUid', null))
+                || (incoming().diff(existing()).affectedKeys().hasOnly(['activeUserCount','activeUserChangeUid','updatedAt'])
+                  && validQuotaCounter(businessId))
               )
             )
           );
@@ -1468,7 +1480,7 @@ service cloud.firestore {
                 || hasTenantPerm(businessId, 'payments.refund')
                 || hasTenantPerm(businessId, 'cash.movements')
                 || hasTenantPerm(businessId, 'expenses.create')
-                || hasTenantPerm(businessId, 'finance.manage')
+                || (hasModule(businessId, 'finance') && hasTenantPerm(businessId, 'finance.manage'))
               )
             )
           );
@@ -1479,7 +1491,7 @@ service cloud.firestore {
 
       // Financial Ledger
       match /ledger/{entryId} {
-        allow get, list: if hasTenantPerm(businessId, 'cash.access') || hasTenantPerm(businessId, 'finance.view');
+        allow get, list: if hasTenantPerm(businessId, 'cash.access') || (hasModule(businessId, 'finance') && hasTenantPerm(businessId, 'finance.view'));
         function canCreateLedger() {
           let next = request.resource.data;
           return isValidLedgerEntry(next, entryId)
@@ -1502,7 +1514,7 @@ service cloud.firestore {
             || (next.kind == 'refund' && next.amountCents < 0 && hasTenantPerm(businessId, 'payments.refund'))
             || (next.kind in ['supply', 'withdrawal'] && hasTenantPerm(businessId, 'cash.movements'))
             || (next.kind == 'expense' && next.amountCents < 0 && hasTenantPerm(businessId, 'expenses.create'))
-            || (next.kind in ['payable', 'receivable', 'fee'] && hasTenantPerm(businessId, 'finance.manage'))
+            || (next.kind in ['payable', 'receivable', 'fee'] && (hasModule(businessId, 'finance') && hasTenantPerm(businessId, 'finance.manage')))
           );
         }
         allow create: if resource == null && canCreateLedger();
@@ -1518,7 +1530,7 @@ service cloud.firestore {
           && incoming().updatedAt == request.time
           && (
             (
-              hasTenantPerm(businessId, 'finance.manage')
+              (hasModule(businessId, 'finance') && hasTenantPerm(businessId, 'finance.manage'))
               && incoming().diff(existing()).affectedKeys().hasOnly(['category', 'reconciledAt', 'externalReference', 'reconciledBy', 'updatedAt'])
             )
             || (
@@ -1534,14 +1546,14 @@ service cloud.firestore {
 
       // Accounts Payable / Receivable (finance.view / finance.manage)
       match /accounts/{accountId} {
-        allow get, list: if hasTenantPerm(businessId, 'finance.view');
-        allow create: if resource == null && isValidId(businessId) && isValidId(accountId)
+        allow get, list: if hasModule(businessId, 'finance') && hasTenantPerm(businessId, 'finance.view');
+        allow create: if hasModule(businessId, 'finance') && resource == null && isValidId(businessId) && isValidId(accountId)
           && isValidFinancialAccount(incoming(), accountId)
           && incoming().actorId == request.auth.uid
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time
           && hasTenantPerm(businessId, 'finance.manage');
-        allow update: if resource != null && isValidId(businessId) && isValidId(accountId)
+        allow update: if hasModule(businessId, 'finance') && resource != null && isValidId(businessId) && isValidId(accountId)
           && isValidFinancialAccount(incoming(), accountId)
           && existing().state == 'pending'
           && incoming().state == 'settled'
@@ -1555,7 +1567,7 @@ service cloud.firestore {
           && incoming().updatedAt == request.time
           && incoming().diff(existing()).affectedKeys().hasOnly(['state', 'settledAt', 'updatedAt'])
           && hasTenantPerm(businessId, 'finance.manage');
-        allow delete: if false;
+        allow delete: if hasModule(businessId, 'finance') && false;
       }
 
       // Customers (PII restricted to cash.access / payments.receive)
@@ -1578,32 +1590,32 @@ service cloud.firestore {
 
       // Suppliers (reports.view)
       match /suppliers/{supplierId} {
-        allow get, list: if hasTenantPerm(businessId, 'reports.view');
-        allow create: if resource == null && isValidId(businessId) && isValidId(supplierId)
+        allow get, list: if hasModule(businessId, 'inventory') && hasTenantPerm(businessId, 'reports.view');
+        allow create: if hasModule(businessId, 'inventory') && resource == null && isValidId(businessId) && isValidId(supplierId)
           && isValidSupplier(incoming(), supplierId)
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time
           && hasTenantPerm(businessId, 'reports.view');
-        allow update: if resource != null && isValidId(businessId) && isValidId(supplierId)
+        allow update: if hasModule(businessId, 'inventory') && resource != null && isValidId(businessId) && isValidId(supplierId)
           && isValidSupplier(incoming(), supplierId)
           && incoming().id == existing().id
           && incoming().createdAt == existing().createdAt
           && incoming().updatedAt == request.time
           && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'document', 'notes', 'active', 'updatedAt'])
           && hasTenantPerm(businessId, 'reports.view');
-        allow delete: if false;
+        allow delete: if hasModule(businessId, 'inventory') && false;
       }
 
       // Inventory Items (list/manage restricted to reports.view; get allowed for products.costs)
       match /inventoryItems/{itemId} {
-        allow get: if isValidId(businessId) && isValidId(itemId) && (hasTenantPerm(businessId, 'reports.view') || hasTenantPerm(businessId, 'products.costs'));
-        allow list: if hasTenantPerm(businessId, 'reports.view');
-        allow create: if resource == null && isValidId(businessId) && isValidId(itemId)
+        allow get: if hasModule(businessId, 'inventory') && isValidId(businessId) && isValidId(itemId) && (hasTenantPerm(businessId, 'reports.view') || hasTenantPerm(businessId, 'products.costs'));
+        allow list: if hasModule(businessId, 'inventory') && hasTenantPerm(businessId, 'reports.view');
+        allow create: if hasModule(businessId, 'inventory') && resource == null && isValidId(businessId) && isValidId(itemId)
           && isValidInventoryItem(incoming(), itemId)
           && incoming().createdAt == request.time
           && incoming().updatedAt == request.time
           && hasTenantPerm(businessId, 'reports.view');
-        allow update: if resource != null && isValidId(businessId) && isValidId(itemId)
+        allow update: if hasModule(businessId, 'inventory') && resource != null && isValidId(businessId) && isValidId(itemId)
           && isValidInventoryItem(incoming(), itemId)
           && incoming().id == existing().id
           && incoming().unit == existing().unit
@@ -1614,17 +1626,17 @@ service cloud.firestore {
             || (hasTenantPerm(businessId, 'products.costs') && incoming().diff(existing()).affectedKeys().hasOnly(['unitCostMicro', 'updatedAt']))
             || (hasTenantPerm(businessId, 'payments.refund') && incoming().diff(existing()).affectedKeys().hasOnly(['unitCostMicro', 'updatedAt']))
           );
-        allow delete: if false;
+        allow delete: if hasModule(businessId, 'inventory') && false;
       }
 
       // Inventory Stock Quantities (no costs; readable/deductible during sales; restockable on returns)
       match /inventoryStock/{itemId} {
-        allow get, list: if hasTenantPerm(businessId, 'catalog.read') || hasTenantPerm(businessId, 'reports.view');
-        allow create: if resource == null && isValidId(businessId) && isValidId(itemId)
+        allow get, list: if hasModule(businessId, 'inventory') && (hasTenantPerm(businessId, 'catalog.read') || hasTenantPerm(businessId, 'reports.view'));
+        allow create: if hasModule(businessId, 'inventory') && resource == null && isValidId(businessId) && isValidId(itemId)
           && isValidInventoryStock(incoming(), itemId)
           && incoming().updatedAt == request.time
           && (hasTenantPerm(businessId, 'reports.view') || (hasTenantPerm(businessId, 'products.manage') && incoming().balanceMilli == 0));
-        allow update: if resource != null && isValidId(businessId) && isValidId(itemId)
+        allow update: if hasModule(businessId, 'inventory') && resource != null && isValidId(businessId) && isValidId(itemId)
           && isValidInventoryStock(incoming(), itemId)
           && incoming().itemId == existing().itemId
           && incoming().updatedAt == request.time
@@ -1635,13 +1647,13 @@ service cloud.firestore {
             || ((hasTenantPerm(businessId, 'orders.create') || hasTenantPerm(businessId, 'orders.update') || hasTenantPerm(businessId, 'payments.receive'))
                 && incoming().balanceMilli <= existing().balanceMilli)
           );
-        allow delete: if false;
+        allow delete: if hasModule(businessId, 'inventory') && false;
       }
 
       // Inventory Moves (append-only)
       match /inventoryMoves/{moveId} {
-        allow get, list: if hasTenantPerm(businessId, 'reports.view');
-        allow create: if resource == null && isValidId(businessId) && isValidId(moveId)
+        allow get, list: if hasModule(businessId, 'inventory') && hasTenantPerm(businessId, 'reports.view');
+        allow create: if hasModule(businessId, 'inventory') && resource == null && isValidId(businessId) && isValidId(moveId)
           && isValidInventoryMove(incoming(), moveId)
           && incoming().actorId == request.auth.uid
           && incoming().createdAt == request.time
@@ -1651,30 +1663,30 @@ service cloud.firestore {
             || ((hasTenantPerm(businessId, 'orders.create') || hasTenantPerm(businessId, 'orders.update') || hasTenantPerm(businessId, 'payments.receive'))
                 && incoming().kind == 'sale' && incoming().quantityMilli <= 0)
           );
-        allow update, delete: if false;
+        allow update, delete: if hasModule(businessId, 'inventory') && false;
       }
 
       // Recipes (composition IDs & quantities, zero cost; retail allows only 1:1 unit-stock links)
       match /recipes/{productId} {
-        allow get, list: if hasTenantPerm(businessId, 'catalog.read') || hasTenantPerm(businessId, 'reports.view');
-        allow create, update: if isValidId(businessId) && isValidId(productId)
+        allow get, list: if (hasModule(businessId, 'costs') || hasModule(businessId, 'inventory')) && (hasTenantPerm(businessId, 'catalog.read') || hasTenantPerm(businessId, 'reports.view'));
+        allow create, update: if (hasModule(businessId, 'costs') || (hasModule(businessId, 'inventory') && getAfter(/databases/$(database)/documents/businesses/$(businessId)/products/$(productId)).data.stockMode == 'unit')) && isValidId(businessId) && isValidId(productId)
           && isValidRecipe(incoming(), productId)
           && incoming().updatedAt == request.time
           && (!isRetail(businessId) || (incoming().items.size() == 1 && incoming().items[0].get('quantityMilli', 0) == 1000))
           && hasTenantPerm(businessId, 'reports.view');
-        allow delete: if isValidId(businessId) && isValidId(productId) && hasTenantPerm(businessId, 'reports.view');
+        allow delete: if (hasModule(businessId, 'costs') || hasModule(businessId, 'inventory')) && isValidId(businessId) && isValidId(productId) && hasTenantPerm(businessId, 'reports.view');
       }
 
       // Purchases (reports.view)
       match /purchases/{purchaseId} {
-        allow get, list: if hasTenantPerm(businessId, 'reports.view');
-        allow create: if resource == null && isValidId(businessId) && isValidId(purchaseId)
+        allow get, list: if hasModule(businessId, 'inventory') && hasTenantPerm(businessId, 'reports.view');
+        allow create: if hasModule(businessId, 'inventory') && resource == null && isValidId(businessId) && isValidId(purchaseId)
           && isValidPurchase(incoming(), purchaseId)
           && incoming().state == 'draft'
           && incoming().actorId == request.auth.uid
           && incoming().createdAt == request.time
           && hasTenantPerm(businessId, 'reports.view');
-        allow update: if resource != null && isValidId(businessId) && isValidId(purchaseId)
+        allow update: if hasModule(businessId, 'inventory') && resource != null && isValidId(businessId) && isValidId(purchaseId)
           && isValidPurchase(incoming(), purchaseId)
           && existing().state == 'draft'
           && incoming().state == 'received'
@@ -1685,7 +1697,7 @@ service cloud.firestore {
           && incoming().receivedAt == request.time
           && incoming().diff(existing()).affectedKeys().hasOnly(['state', 'receivedAt'])
           && hasTenantPerm(businessId, 'reports.view');
-        allow delete: if false;
+        allow delete: if hasModule(businessId, 'inventory') && false;
       }
 
       // Sale Returns & Exchanges (payments.refund; append-only)

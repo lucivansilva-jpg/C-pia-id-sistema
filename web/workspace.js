@@ -86,6 +86,9 @@ async function supportApi(path, options = {}) {
         access_alias: b.accessAlias || null,
         business_kind: businessKind,
         kind_pending: !businessKind,
+        modules: settingsSnaps[rawBusinesses.indexOf(b)]?.data()?.modules ?? null,
+        user_limit: settingsSnaps[rawBusinesses.indexOf(b)]?.data()?.userLimit ?? null,
+        active_user_count: settingsSnaps[rawBusinesses.indexOf(b)]?.data()?.activeUserCount ?? null,
         active: !!b.active,
         last_seen_at: lastSeenIso,
         online_users: isOnline ? 1 : 0,
@@ -308,7 +311,7 @@ function drawBusinesses() {
                 : 'Modalidade pendente';
           return `<div class="member-row"><div><strong>${esc(b.name)}</strong><small>Código ${esc(
             b.code
-          )} · Modalidade: ${kindLabel} · <span class="presence ${p.key}">${p.label}</span></small><small>Última atividade: ${esc(
+          )} · Modalidade: ${kindLabel}${b.user_limit!=null?' · Usuários: '+b.active_user_count+'/'+b.user_limit:''} · <span class="presence ${p.key}">${p.label}</span></small><small>Última atividade: ${esc(
             supportDate(b.last_seen_at)
           )}</small><small>${b.open_tickets} chamado(s) pendente(s)${
             Number(b.unread_tickets) ? ' · ' + b.unread_tickets + ' não lido(s)' : ''

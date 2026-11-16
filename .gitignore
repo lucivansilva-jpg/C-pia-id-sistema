@@ -9,3 +9,7 @@ node_modules/
 firestore-debug.log
 firebase-debug.log
 ui-debug.log
+
+# Local test output
+artifacts/
+*-debug.log

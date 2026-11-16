@@ -77,6 +77,7 @@
 
   function inferErrStatus(err) {
     if (err instanceof HttpError) return err.status;
+    if(String(err?.message||'').includes('Limite de usuários ativos'))return 409;
     const msg = String(err?.message || '');
     if (
       err?.code === 'permission-denied' ||
@@ -393,6 +394,9 @@
       mode: s.mode,
       paper: s.paper,
       business_kind: s.businessKind || 'food',
+      modules:s.modules??null,
+      user_limit:s.userLimit??null,
+      active_user_count:s.activeUserCount??null,
       legal_name: s.legalName || '',
       cnpj: s.cnpj || '',
       address: s.address || '',
@@ -552,12 +556,14 @@
   }
 
   async function computeProductCosts(businessId, products, user) {
-    const canSeeCosts = hasPermission(user, 'products.costs');
+    const settings=await getSettings(businessId);
+    const mods=window.IDContract?.modules(settings||{}) || {inventory:true,costs:true};
+    const canSeeCosts = mods.costs && hasPermission(user, 'products.costs');
     const [stockSnap, recipeSnap] = await Promise.all([
-      getDocs(collection(db, 'businesses', businessId, 'inventoryStock')).catch((err) =>
+      (mods.inventory ? getDocs(collection(db, 'businesses', businessId, 'inventoryStock')) : Promise.resolve({docs:[]})).catch((err) =>
         handleFirestoreError(err, OperationType.LIST, `businesses/${businessId}/inventoryStock`)
       ),
-      getDocs(collection(db, 'businesses', businessId, 'recipes')).catch((err) =>
+      ((mods.inventory||mods.costs) ? getDocs(collection(db, 'businesses', businessId, 'recipes')) : Promise.resolve({docs:[]})).catch((err) =>
         handleFirestoreError(err, OperationType.LIST, `businesses/${businessId}/recipes`)
       )
     ]);
@@ -816,6 +822,8 @@
   }
 
   async function managementReport(businessId, range) {
+    const reportSettings=await getSettings(businessId);
+    const reportModules=window.IDContract?.modules(reportSettings||{}) || {costs:true,finance:true};
     const startTs = Timestamp.fromDate(new Date(range.start));
     const endTs = Timestamp.fromDate(new Date(range.end));
     const [ordersSnap, ledgerSnap, returnsSnap] = await Promise.all([
@@ -921,17 +929,17 @@
         orders: raw.length,
         revenue_cents: revenue,
         ticket_cents: raw.length ? Math.round(revenue / raw.length) : 0,
-        known_cost_cents: costKnown,
+        known_cost_cents: reportModules.costs ? costKnown : null,
         missing_cost_quantity: missingCost,
-        operating_expenses_cents: expenseTotal,
+        operating_expenses_cents: reportModules.finance ? expenseTotal : null,
         unclassified_expenses: unclassified,
-        estimated_result_cents: missingCost || unclassified ? null : revenue - costKnown - expenseTotal,
+        estimated_result_cents: !reportModules.costs || !reportModules.finance || missingCost || unclassified ? null : revenue - costKnown - expenseTotal,
         discounts_cents: raw.reduce((t, o) => t + (o.discountCents || 0), 0),
         refunds_cents: -movement.filter((m) => m.kind === 'refund').reduce((t, m) => t + m.amountCents, 0),
         received_cents: movement.filter((m) => ['sale', 'refund'].includes(m.kind)).reduce((t, m) => t + m.amountCents, 0),
-        returned_stock_cost_cents: restored
+        returned_stock_cost_cents: reportModules.costs ? restored : null
       },
-      products: [...products.values()].sort((a, b) => b.quantity - a.quantity),
+      products: [...products.values()].map(p=>reportModules.costs?p:{...p,cost_cents:null}).sort((a, b) => b.quantity - a.quantity),
       staff: [...staff.values()]
         .map((s) => ({ ...s, orders: s.orders.size, ticket_cents: Math.round(s.revenue_cents / s.orders.size) }))
         .sort((a, b) => b.revenue_cents - a.revenue_cents),
@@ -1072,6 +1080,15 @@
     authorizeRoute(user, method, path);
 
     const currentSettings = await getSettings(businessId);
+    const contractMods=window.IDContract?.modules(currentSettings||{}) || {tables:true,finance:true,inventory:true,costs:true};
+    const requiredModule = /^\/api\/tables(?:\/|$)/.test(path)?'tables':/^\/api\/erp\/(accounts|finance|financial|reconcile|ledger)(?:\/|$)/.test(path)?'finance':/^\/api\/erp\/(inventory|stock|purchases|suppliers)(?:\/|$)/.test(path)?'inventory':/^\/api\/erp\/(recipes|costs)(?:\/|$)/.test(path)?'costs':null;
+    if(/^\/api\/finance(?:\/|$)/.test(path)&&!contractMods.finance)fail(403,'Financeiro completo não contratado.');
+    if(requiredModule&&!contractMods[requiredModule]){
+      if(path==='/api/tables'&&method==='GET')return json({tables:[]});
+      fail(403,'Este recurso não está contratado para o estabelecimento.');
+    }
+    const requiredPermission=routePermission(method,path);
+    if(requiredPermission && window.IDContract && !IDContract.allowed(currentSettings||{},requiredPermission))fail(403,'Módulo não contratado.');
     const isRetail = currentSettings?.businessKind === 'retail';
     if (isRetail) {
       if (user.role === 'waiter') fail(403, 'O perfil garçom não é utilizado no varejo. Peça ao administrador para ajustar seu perfil.');
@@ -1099,7 +1116,7 @@
           email: user.email || null,
           username: user.username || null,
           role: user.role,
-          permissions: user.permissions
+          permissions: user.permissions.filter(p=>!window.IDContract||IDContract.allowed(currentSettings||{},p))
         },
         database: true,
         storage: true,
@@ -1151,6 +1168,7 @@
         return json(settingsDto(currentSettings, account.business));
       }
       if (method === 'PUT') {
+        if(['modules','userLimit','user_limit','activeUserCount','businessKind','business_kind'].some(k=>Object.hasOwn(body,k)))fail(403,'Somente a plataforma pode alterar o contrato.');
         const name = clean(body.name, 80);
         const cnpj = clean(body.cnpj, 30).replace(/\D/g, '');
         if (cnpj && cnpj.length !== 14) fail(400, 'Informe o CNPJ com 14 dígitos.');
@@ -1162,6 +1180,7 @@
         const nextLogo = currentSettings?.logoKey || null;
         const themeColor = currentSettings?.themeColor || '#6a330d';
         batch.set(doc(db, 'businesses', businessId, 'settings', 'main'), {
+          ...currentSettings,
           name,
           mode: body.mode,
           paper: body.paper,
@@ -1245,7 +1264,7 @@
       const snap = await getDocs(collection(db, 'businesses', businessId, 'profiles')).catch((err) =>
         handleFirestoreError(err, OperationType.LIST, `businesses/${businessId}/profiles`)
       );
-      const allowedRoles = isRetail ? ['admin', 'cashier'] : ['admin', 'cashier', 'waiter'];
+      const allowedRoles = isRetail || !contractMods.tables ? ['admin', 'cashier'] : ['admin', 'cashier', 'waiter'];
       const hiddenPerms = isRetail ? new Set(['tables.read', 'tables.manage']) : new Set();
       const profiles = allowedRoles.map((role) => {
         const found = snap.docs.find((d) => d.id === role)?.data();
@@ -1258,7 +1277,7 @@
       });
       return json({
         profiles,
-        permission_catalog: PERMISSIONS.filter((id) => !hiddenPerms.has(id)).map((id) => ({
+        permission_catalog: PERMISSIONS.filter((id) => !hiddenPerms.has(id) && (!window.IDContract||IDContract.allowed(currentSettings||{},id))).map((id) => ({
           id,
           group: PERMISSION_INFO[id][0],
           label: PERMISSION_INFO[id][1],
@@ -1349,8 +1368,9 @@
           query(collection(db, 'businesses', businessId, 'members'), where('username', '==', username), limit(1))
         ).catch((err) => handleFirestoreError(err, OperationType.LIST, `businesses/${businessId}/members`));
         if (!dupSnap.empty) fail(409, 'Este nome de usuário já está em uso.');
+        await fb.checkMemberCapacity(businessId);
         const newUid = await provisionAuthAccount(staffAuthEmail(username, businessCode), password);
-        const batch = writeBatch(db);
+        const batch = fb.memberBatch(businessId, creating ? newUid : uid, creating ? {email:staffAuthEmail(username,businessCode),password} : null);
         batch.set(doc(db, 'userBusinesses', newUid), {
           uid: newUid,
           businessId,
@@ -1396,7 +1416,7 @@
         }
         if (old.version !== body.version) fail(409, 'O cadastro foi alterado. Atualize antes de salvar.');
         if (old.isOwner && uid !== auth.currentUser.uid) fail(403, 'Não é possível alterar o proprietário principal aqui.');
-        const batch = writeBatch(db);
+        const batch = fb.memberBatch(businessId, creating ? newUid : uid, creating ? {email:staffAuthEmail(username,businessCode),password} : null);
         batch.update(mRef, {
           name,
           role: body.role,
@@ -1503,6 +1523,8 @@
         if (dup.docs.some((d) => d.id !== id)) fail(409, 'O código de barras já pertence a outro produto.');
       }
 
+      if(mode!=='none'&&!contractMods.inventory)fail(403,'Controle de estoque não contratado.');
+      if((body.cost_cents!=null||body.cost_mode==='recipe')&&!contractMods.costs)fail(403,'Custos e resultados não contratados.');
       const initial = body.initial_stock ?? 0;
       const minimum = body.minimum_stock ?? 0;
       if (!num(initial, 0, 1000000) || !num(minimum, 0, 1000000)) fail(400, 'Informe quantidades inteiras de unidades.');
@@ -1513,7 +1535,7 @@
       const imageKey = clean(body.image_key, 128) || null;
       if (imageKey && !(await resolveMediaUrl(businessId, imageKey))) fail(400, 'Foto não encontrada.');
 
-      const costPermission = hasPermission(user, 'products.costs');
+      const costPermission = contractMods.costs && hasPermission(user, 'products.costs');
       if (costPermission && !(body.cost_cents === null || body.cost_cents === undefined || num(body.cost_cents, 0, 100000000))) {
         fail(400, 'Custo inválido.');
       }
@@ -4593,7 +4615,7 @@
               createdAt: serverTimestamp()
             });
           }
-          if (p.totalCents > 0) {
+          if (p.totalCents > 0 && contractMods.finance) {
             const aid = crypto.randomUUID();
             tx.set(doc(db, 'businesses', businessId, 'accounts', aid), {
               id: aid,

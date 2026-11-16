@@ -13,7 +13,9 @@
     "check": "node scripts/check-package.mjs",
     "lint": "node scripts/check-package.mjs",
     "test:firebase:simulator": "node checks/firebase-api-functional.test.mjs",
-    "test:firebase:rules": "npx --yes firebase-tools@15.36.0 emulators:exec --only firestore --project demo-idsistema-test --config firebase.emulator.json \"node firestore.rules.test.ts\""
+    "test:firebase:rules": "npx --yes firebase-tools@15.36.0 emulators:exec --only firestore --project demo-idsistema-test --config firebase.emulator.json \"node firestore.rules.test.ts\"",
+    "test:contracts:emulator": "node checks/contracts-emulator.test.mjs",
+    "migrate:contracts:local": "node checks/migrate-contracts-local.mjs"
   },
   "dependencies": {
     "@firebase/eslint-plugin-security-rules": "^0.0.2",

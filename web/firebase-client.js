@@ -35,9 +35,25 @@
     documentId
   } = sdk;
 
-  const app = initializeApp(FIREBASE_CONFIG);
+  const localHost = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+  if (window.LOGIN_CONFIG?.developmentOnly && !localHost) {
+    document.addEventListener('DOMContentLoaded', () => {
+      const notice = document.createElement('p'); notice.setAttribute('role','alert');
+      notice.textContent = 'Cópia de desenvolvimento isolada. Use a demonstração ou os emuladores locais; o login remoto está bloqueado.';
+      document.body.prepend(notice);
+    });
+    throw new Error('Firebase remoto bloqueado nesta cópia de desenvolvimento.');
+  }
+  const emulatorMode = window.LOGIN_CONFIG?.developmentOnly === true;
+  const runtimeConfig = emulatorMode ? {...FIREBASE_CONFIG, projectId:'demo-idsistema-test', apiKey:'demo-key', authDomain:'localhost', firestoreDatabaseId:'(default)'} : FIREBASE_CONFIG;
+  const app = initializeApp(runtimeConfig);
   const auth = getAuth(app);
-  const db = getFirestore(app, FIREBASE_CONFIG.firestoreDatabaseId);
+  const db = getFirestore(app, runtimeConfig.firestoreDatabaseId);
+
+  if (emulatorMode) {
+    sdk.connectAuthEmulator(auth, 'http://127.0.0.1:9099', {disableWarnings:true});
+    sdk.connectFirestoreEmulator(db, '127.0.0.1', 8185);
+  }
 
   const PLATFORM_ADMIN_EMAIL = (window.LOGIN_CONFIG?.platformAdminEmail || 'lucivan.silva@gmail.com').toLowerCase();
 
@@ -155,8 +171,9 @@
 
   async function provisionAuthAccount(email, password) {
     const appName = 'provisioning-' + crypto.randomUUID();
-    const secApp = initializeApp(FIREBASE_CONFIG, appName);
+    const secApp = initializeApp(runtimeConfig, appName);
     const secAuth = getAuth(secApp);
+    if (emulatorMode) sdk.connectAuthEmulator(secAuth, 'http://127.0.0.1:9099', {disableWarnings:true});
     try {
       const cred = await createUserWithEmailAndPassword(secAuth, email, password);
       const uid = cred.user.uid;
@@ -167,6 +184,52 @@
     } finally {
       await deleteApp(secApp).catch(() => {});
     }
+  }
+
+  async function checkMemberCapacity(businessId){
+    const snap=await getDoc(doc(db,'businesses',businessId,'settings','main'));
+    const s=snap.exists()?snap.data():{};
+    if(s.userLimit!=null && s.activeUserCount>=s.userLimit)throw Error('Limite de usuários ativos atingido. Solicite ampliação ao suporte.');
+  }
+  function memberBatch(businessId, uid, credential=null) {
+    const writes=[]; const wrapper={};
+    for (const op of ['set','update','delete']) wrapper[op]=(...args)=>{writes.push([op,args]);return wrapper;};
+    wrapper.commit=()=>runTransaction(db, async tx=>{
+      const sr=doc(db,'businesses',businessId,'settings','main');
+      const mr=doc(db,'businesses',businessId,'members',uid);
+      const [ss,ms]=await Promise.all([tx.get(sr),tx.get(mr)]);
+      const settings=ss.exists()?ss.data():{};
+      const mutation=writes.find(([,args])=>args[0].path===mr.path);
+      if(!mutation)throw Error('Operação de funcionário ausente.');
+      const before=ms.exists()?ms.data():null;
+      const next={...(before||{}),...mutation[1][1]};
+      if(before?.version && mutation[1][1].version!==before.version+1)throw Error('Cadastro alterado. Atualize antes de salvar.');
+      const delta=Number(next.active===true)-Number(before?.active===true);
+      if(next.active && next.role==='waiter' && !window.IDContract.modules(settings).tables)throw Error('Mesas e atendimento não estão contratados.');
+      if(settings.userLimit!=null && delta!==0){
+        const count=settings.activeUserCount+delta;
+        if(!Number.isSafeInteger(count)||count<1||count>settings.userLimit)throw Error('Limite de usuários ativos atingido. Desative um usuário ou solicite ampliação ao suporte.');
+        tx.update(sr,{activeUserCount:count,activeUserChangeUid:uid,updatedAt:serverTimestamp()});
+      }
+      for(const [op,args] of writes)tx[op](...args);
+    }).catch(async error=>{
+      // A failed reservation must not leave a usable orphan Auth account.
+      if(credential){
+        const check=await getDoc(doc(db,'businesses',businessId,'members',uid)).catch(()=>null);
+        if(check && !check.exists()){
+          const temp=initializeApp(runtimeConfig,'cleanup-'+crypto.randomUUID());
+          const tempAuth=getAuth(temp);
+          try{
+            if(emulatorMode)sdk.connectAuthEmulator(tempAuth,'http://127.0.0.1:9099',{disableWarnings:true});
+            const account=await signInWithEmailAndPassword(tempAuth,credential.email,credential.password);
+            if(account.user.uid===uid)await sdk.deleteUser(account.user);
+          }catch{console.warn('Falha ao remover conta sem vínculo; ela não tem acesso ao estabelecimento.');}
+          finally{await deleteApp(temp).catch(()=>{});}
+        }
+      }
+      throw error;
+    });
+    return wrapper;
   }
 
   const PERMISSION_INFO = Object.freeze({
@@ -270,6 +333,7 @@
   }
 
   function hasPermission(user, permission) {
+    if(user?.contract_modules!=null && window.IDContract && !IDContract.allowed({modules:user.contract_modules,businessKind:user.business_kind},permission))return false;
     if (!user || user.active === false || user.active === 0 || !roleAllows(user.role, permission)) {
       return false;
     }
@@ -420,6 +484,9 @@
                   access_alias: b.accessAlias || null,
                   active: !!b.active,
                   business_kind: validRawKind || 'food',
+                  modules: settingsSnap?.data()?.modules ?? null,
+                  user_limit: settingsSnap?.data()?.userLimit ?? null,
+                  active_user_count: settingsSnap?.data()?.activeUserCount ?? null,
                   raw_business_kind: validRawKind
                 },
                 user: {
@@ -512,14 +579,19 @@
         access_alias: biz.accessAlias || null,
         active: !!biz.active,
         business_kind: validRawKind || 'food',
-        raw_business_kind: validRawKind
+        modules: settingsSnap?.data()?.modules ?? null,
+                  user_limit: settingsSnap?.data()?.userLimit ?? null,
+                  active_user_count: settingsSnap?.data()?.activeUserCount ?? null,
+                  raw_business_kind: validRawKind
       },
       user: {
         id: fbUser.uid,
         name: member.name,
         username: member.username,
         role: member.role,
-        permissions: effective,
+        contract_modules: settingsSnap?.data()?.modules??null,
+        business_kind: validRawKind || 'food',
+        permissions: effective.filter(p => !window.IDContract || window.IDContract.allowed(settingsSnap?.data() || {}, p)),
         raw_permissions: member.permissions || {},
         profile_permissions: roleProfile.permissions || {}
       }
@@ -594,6 +666,8 @@
     staffAuthEmail,
     friendlyAuthError,
     provisionAuthAccount,
+    memberBatch,
+    checkMemberCapacity,
     isPlatformToken,
     ensurePlatformAdminDoc,
     resolveBusinessAccess,

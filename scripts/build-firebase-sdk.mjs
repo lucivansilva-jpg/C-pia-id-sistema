@@ -14,16 +14,19 @@ const entrySource = `
 import { initializeApp, deleteApp, getApps } from 'firebase/app';
 import {
   getAuth,
+  connectAuthEmulator,
   GoogleAuthProvider,
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   updatePassword,
+  deleteUser,
   signOut,
   onAuthStateChanged
 } from 'firebase/auth';
 import {
   getFirestore,
+  connectFirestoreEmulator,
   doc,
   collection,
   collectionGroup,
@@ -59,14 +62,17 @@ export {
   deleteApp,
   getApps,
   getAuth,
+  connectAuthEmulator,
   GoogleAuthProvider,
   signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   updatePassword,
+  deleteUser,
   signOut,
   onAuthStateChanged,
   getFirestore,
+  connectFirestoreEmulator,
   doc,
   collection,
   collectionGroup,

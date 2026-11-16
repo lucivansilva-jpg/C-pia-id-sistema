@@ -17,3 +17,10 @@ textarea{font:inherit;width:100%;padding:12px;border:1px solid #d8cbbb;border-ra
 .demo-choice-card.retail .tag{background:#dbeafe;color:#1e40af}
 @media(max-width:600px){.demo-choice-grid{grid-template-columns:1fr}}
 
+
+/* Contrato por estabelecimento — mesma identidade visual do sistema. */
+[data-contract]{border:1px solid #ead8c6;border-radius:10px;padding:16px;margin:18px 0;min-width:0}
+[data-contract] legend{font-weight:600;padding:0 6px}
+[data-contract] p{font-size:13px;color:#786452}
+[data-contract] .check{margin:8px 0}
+[data-contract] [hidden]{display:none!important}

@@ -591,6 +591,9 @@ async function runEmulatorSuite() {
     const adminApi = apiRuntime(ownerA, 'owner_biz_a', 'admin');
     const waiterApi = apiRuntime(waiter1, 'waiter_1', 'waiter');
     const cashierApi = apiRuntime(cashierNoProd, 'cashier_noprod', 'cashier');
+    await adminApi('POST', '/api/tables', { number: 2 });
+    await adminApi('POST', '/api/tables', { number: 3 });
+    await adminApi('POST', '/api/tables', { number: 4 });
     console.log('CHECK: real API product creation with private cost');
     const newProduct = await adminApi('POST', '/api/products', {
       name: 'Produto emulado', price_cents: 600, cost_cents: 180, stock_mode: 'none', sale_unit: 'un',
@@ -642,6 +645,29 @@ async function runEmulatorSuite() {
     console.log('CONCURRENT_STATUS', simultaneous.map((r) => r.http_status));
     assert.deepEqual(simultaneous.map((r) => r.http_status).sort(), [201, 409]);
     assert.equal((await getDoc(doc(cashierNoProd, 'businesses', 'biz_a', 'cashSessions', reopened.id))).data().methodTotals.pix, 600);
+    console.log('CHECK: advanced command operations through actual SDK transactions');
+    const commandA = await waiterApi('POST', '/api/orders', {
+      request_key: 'emulator_command_order_a', table_number: 2, items: [{ product_id: 'prod_1', quantity: 2 }]
+    });
+    await cashierApi('POST', `/api/orders/${commandA.id}/kitchen-print`, { request_key: 'emulator_command_print1', version: 1 });
+    await waiterApi('POST', `/api/orders/${commandA.id}/items`, { request_key: 'emulator_command_items1', version: 1, items: [{ product_id: 'prod_1', quantity: 1 }] });
+    const complement = await cashierApi('POST', `/api/orders/${commandA.id}/kitchen-print`, { request_key: 'emulator_command_print2', version: 2 });
+    assert.equal(complement.print_kind, 'complement');
+    await cashierApi('POST', `/api/orders/${commandA.id}/transfer`, {
+      request_key: 'emulator_command_move01', target_table_number: 4, reason: 'Cliente mudou de mesa', version: 2
+    });
+    const commandARaw = (await getDoc(doc(cashierNoProd, 'businesses', 'biz_a', 'orders', commandA.id))).data();
+    const split = await cashierApi('POST', `/api/orders/${commandA.id}/split`, {
+      request_key: 'emulator_command_split1', target_table_number: 2, reason: 'Clientes pediram contas separadas', version: 3,
+      items: [{ item_id: commandARaw.items[0].id, quantity: 1 }]
+    });
+    const commandB = await waiterApi('POST', '/api/orders', {
+      request_key: 'emulator_command_order_b', table_number: 3, items: [{ product_id: 'prod_1', quantity: 1 }]
+    });
+    await cashierApi('POST', `/api/orders/${split.new_order_id}/merge`, {
+      request_key: 'emulator_command_merge1', target_order_id: commandB.id, reason: 'Clientes decidiram pagar juntos', version: 1, target_version: 1
+    });
+    assert.equal((await getDoc(doc(cashierNoProd, 'businesses', 'biz_a', 'orders', split.new_order_id))).data().state, 'cancelled');
     console.log('API_EMULATOR_OK: actual adapter created and paid an order with idempotency and audit writes.');
 
     // Fluxo 6: Retail modality enforcement in Firestore Rules (platform-only businessKind, no tables/comandas/waiters/recipes)

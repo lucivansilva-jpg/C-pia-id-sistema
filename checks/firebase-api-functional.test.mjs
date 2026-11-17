@@ -1135,4 +1135,45 @@ let directOrderId;
   console.log('PASS [12] Opções obrigatórias, adicionais com quantidade, disponibilidade, projeção pública e corrida de preço/esgotamento');
 }
 
+// 13. Advanced command operations preserve totals, stock and audit history.
+{
+  seedTenant('biz_commands','food');
+  const admin=makeAccount('biz_commands','commands_admin','Administrador','admin');
+  asAccount(admin);
+  for(const number of [1,2,3])assert.equal((await req('POST','/api/tables',{number})).status,201);
+  const product=await req('POST','/api/products',{name:'Tapioca operacional',price_cents:1000,cost_cents:null,stock_mode:'none',sale_unit:'un',active:true,available:true,visible:true});
+  const first=await req('POST','/api/orders',{request_key:'commands_order_0001',table_number:1,items:[{product_id:product.data.id,quantity:2}]});
+  const second=await req('POST','/api/orders',{request_key:'commands_order_0002',table_number:2,items:[{product_id:product.data.id,quantity:1}]});
+  let firstRaw=store.get(`businesses/biz_commands/orders/${first.data.id}`),secondRaw=store.get(`businesses/biz_commands/orders/${second.data.id}`);
+  const printed=await req('POST',`/api/orders/${first.data.id}/kitchen-print`,{request_key:'commands_print_001',version:firstRaw.version});
+  assert.equal(printed.status,200,JSON.stringify(printed.data));assert.equal(printed.data.order.items.length,1);assert.equal(printed.data.print_kind,'first');
+  firstRaw=store.get(`businesses/biz_commands/orders/${first.data.id}`);
+  assert.equal((await req('POST',`/api/orders/${first.data.id}/items`,{request_key:'commands_items_001',version:firstRaw.version,items:[{product_id:product.data.id,quantity:1}]})).status,200);
+  firstRaw=store.get(`businesses/biz_commands/orders/${first.data.id}`);
+  const complement=await req('POST',`/api/orders/${first.data.id}/kitchen-print`,{request_key:'commands_print_002',version:firstRaw.version});
+  assert.equal(complement.status,200,JSON.stringify(complement.data));assert.equal(complement.data.order.items.length,1);assert.equal(complement.data.print_kind,'complement');
+
+  const transferred=await req('POST',`/api/orders/${second.data.id}/transfer`,{request_key:'commands_transfer1',target_table_number:3,reason:'Cliente mudou de mesa',version:secondRaw.version});
+  assert.equal(transferred.status,200,JSON.stringify(transferred.data));
+  assert.equal(store.get('businesses/biz_commands/locks/table_2').active,false);assert.equal(store.get('businesses/biz_commands/locks/table_3').resourceId,second.data.id);
+
+  firstRaw=store.get(`businesses/biz_commands/orders/${first.data.id}`);
+  const originalTotal=firstRaw.totalCents;
+  const split=await req('POST',`/api/orders/${first.data.id}/split`,{request_key:'commands_split_001',version:firstRaw.version,target_table_number:2,reason:'Clientes pediram contas separadas',items:[{item_id:firstRaw.items[0].id,quantity:1}]});
+  assert.equal(split.status,201,JSON.stringify(split.data));
+  firstRaw=store.get(`businesses/biz_commands/orders/${first.data.id}`);const splitRaw=store.get(`businesses/biz_commands/orders/${split.data.new_order_id}`);
+  assert.equal(firstRaw.totalCents+splitRaw.totalCents,originalTotal);assert.equal(store.get('businesses/biz_commands/locks/table_2').resourceId,split.data.new_order_id);
+
+  secondRaw=store.get(`businesses/biz_commands/orders/${second.data.id}`);
+  const merged=await req('POST',`/api/orders/${split.data.new_order_id}/merge`,{request_key:'commands_merge_001',version:splitRaw.version,target_order_id:second.data.id,target_version:secondRaw.version,reason:'Clientes decidiram pagar juntos'});
+  assert.equal(merged.status,200,JSON.stringify(merged.data));
+  const mergedSource=store.get(`businesses/biz_commands/orders/${split.data.new_order_id}`),mergedTarget=store.get(`businesses/biz_commands/orders/${second.data.id}`);
+  assert.equal(mergedSource.state,'cancelled');assert.equal(mergedSource.totalCents,0);assert.equal(mergedTarget.totalCents,2000);assert.equal(store.get('businesses/biz_commands/locks/table_2').active,false);
+  assert.ok(store.get('businesses/biz_commands/orderOperations/id_order_merge_commands_merge_001'));
+
+  const waiter=makeAccount('biz_commands','commands_waiter','Garçom','waiter');asAccount(waiter);
+  assert.equal((await req('POST',`/api/orders/${first.data.id}/transfer`,{request_key:'commands_denied01',target_table_number:2,reason:'Tentativa sem permissão',version:firstRaw.version})).status,403);
+  console.log('PASS [13] Transferência, complemento, separação e junção preservam total, estoque, bloqueios e permissões');
+}
+
 console.log(`ALL_FUNCTIONAL_TESTS_PASSED (simulated reads counted: ${readCount})`);

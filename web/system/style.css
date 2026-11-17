@@ -35,3 +35,4 @@ nav{flex:1;min-height:110px;overflow-y:auto}.brand,.shop,.navlabel,.asidefoot{fl
 @media(max-width:650px){.catalog-addon{grid-template-columns:1fr}.catalog-addon .textbtn{grid-column:auto}}
 
 .addon-selection{display:grid;grid-template-columns:1fr 90px;gap:12px;align-items:center;border-bottom:1px solid #ead8c6;padding:8px 0}
+.splititems{max-height:42vh;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:4px 12px;margin:12px 0}.splititem{display:grid!important;grid-template-columns:1fr 90px;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}.splititem:last-child{border-bottom:0}.splititem input{width:100%!important;margin:0!important}

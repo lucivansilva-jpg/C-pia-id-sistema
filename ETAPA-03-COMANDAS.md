@@ -1,6 +1,6 @@
 # Etapa 3 — Gestão avançada de comandas
 
-Estado: planejada após auditoria; implementação ainda não iniciada.
+Estado: concluída e validada localmente em 17/11/2026; ainda não publicada.
 
 ## Objetivo
 
@@ -22,7 +22,7 @@ fluxos já aprovados de pagamento, caixa, estoque, impressão e permissões.
 - Cada lançamento de itens recebe identificação própria de lote.
 - A primeira impressão envia o pedido completo.
 - Depois de acrescentar produtos, o botão `Imprimir complemento` mostra somente o
-  lote novo, identificado como complemento da mesma comanda.
+  conjunto novo, identificado como complemento da mesma comanda.
 - Continua existindo `Reimprimir pedido completo` para contingência.
 - Imprimir não modifica pagamento, entrega ou estoque.
 - O sistema registra quem imprimiu, qual lote e quando, evitando complemento duplicado
@@ -33,7 +33,8 @@ fluxos já aprovados de pagamento, caixa, estoque, impressão e permissões.
 - Somente comandas abertas, sem recebimentos e do mesmo estabelecimento.
 - A comanda de destino recebe os itens da origem preservando preço, opções, adicionais,
   observações, autoria e histórico.
-- A origem é encerrada como `unida`, nunca apagada.
+- A origem é encerrada, nunca apagada; o registro imutável da operação identifica a
+  comanda de destino, o operador, o motivo e o horário.
 - O total da operação antes e depois precisa permanecer igual.
 - Nenhuma nova baixa de estoque é realizada.
 - Bloqueios das mesas são atualizados na mesma transação.
@@ -85,5 +86,17 @@ fluxos já aprovados de pagamento, caixa, estoque, impressão e permissões.
 6. Interface responsiva do caixa.
 7. Testes locais de concorrência, permissões, totais, estoque e impressão.
 
-Somente após todos os critérios passarem será criado um novo ponto de restauração no
-GitHub da cópia. A publicação continuará reservada para o final do conjunto de etapas.
+## Resultado da implementação
+
+- As quatro funções foram adicionadas somente à modalidade Alimentação.
+- Pagamentos, caixa, estoque e fluxo original do PDV foram preservados.
+- Transferência, junção e separação usam transações atômicas e registros imutáveis em
+  `orderOperations`.
+- O controle de impressão complementar fica isolado em `orderPrintStates`, sem alterar
+  versão, valores ou ciclo financeiro da comanda.
+- Validação funcional: 13 fluxos completos aprovados.
+- Validação oficial no Firestore Emulator: regras, API real, concorrência, permissões,
+  impressão complementar, transferência, separação e junção aprovadas.
+- Build, lint e conferência do pacote aprovados.
+
+A publicação continua reservada para o final do conjunto de etapas.

@@ -146,7 +146,7 @@
       return ['GET', 'POST', 'DELETE'].includes(method) ? 'drafts.manage' : null;
     }
     if (path === '/api/orders') return method === 'GET' ? 'orders.read' : method === 'POST' ? 'orders.create' : null;
-    const order = path.match(/^\/api\/orders\/[^/]+(?:\/(items|payment|finalize|delivery|cancel|discount|refund|hold|print))?$/);
+    const order = path.match(/^\/api\/orders\/[^/]+(?:\/(items|payment|finalize|delivery|cancel|discount|refund|hold|print|transfer|merge|split|kitchen-print))?$/);
     if (order) {
       if (method === 'GET' && order[1] === 'print') return 'orders.print';
       if (method === 'GET' && !order[1]) return 'orders.read';
@@ -160,7 +160,11 @@
           delivery: 'orders.deliver',
           cancel: 'orders.cancel',
           discount: 'discounts.authorize',
-          refund: 'payments.refund'
+          refund: 'payments.refund',
+          transfer: 'payments.receive',
+          merge: 'payments.receive',
+          split: 'payments.receive',
+          'kitchen-print': 'orders.print'
         }[order[1]] || null
       );
     }
@@ -686,6 +690,18 @@
 
   function tableLockDocRef(businessId, tableNumber) {
     return doc(db, 'businesses', businessId, 'locks', 'table_' + String(tableNumber));
+  }
+
+  function storedItemsTotal(items) {
+    return (items || []).reduce((sum, item) => sum + item.quantity * item.unit_price_cents, 0);
+  }
+
+  function orderOperationRef(businessId, operationId) {
+    return doc(db, 'businesses', businessId, 'orderOperations', operationId);
+  }
+
+  function orderOperationPayload(id, kind, sourceOrderId, targetOrderId, reason, user, details = {}) {
+    return { id, kind, sourceOrderId, targetOrderId: targetOrderId || null, reason: clean(reason, 200), actorId: user.id, details, createdAt: serverTimestamp() };
   }
 
   function nextSessionTotals(csData, method, deltaCents, fallbackTotals = null) {
@@ -2890,7 +2906,7 @@
       return json(resultPayload, status);
     }
 
-    const orderMatch = path.match(/^\/api\/orders\/([^/]+)(?:\/(payment|finalize|delivery|cancel|items|hold|print|discount|refund|customer))?$/);
+    const orderMatch = path.match(/^\/api\/orders\/([^/]+)(?:\/(payment|finalize|delivery|cancel|items|hold|print|discount|refund|customer|transfer|merge|split|kitchen-print))?$/);
     if (orderMatch) {
       const id = orderMatch[1];
       const task = orderMatch[2];
@@ -2900,6 +2916,15 @@
         const { dto, payments } = await detailedOrder(businessId, id, user, true);
         if (user.role !== 'admin' && !hasPermission(user, 'orders.shared') && !canReadOrder(user, dto)) {
           fail(403, 'Esta comanda não pertence ao seu atendimento.');
+        }
+        if (hasPermission(user, 'orders.print')) {
+          const printState = await getDoc(doc(db, 'businesses', businessId, 'orderPrintStates', id)).catch(() => null);
+          const data = printState?.exists() ? printState.data() : null;
+          dto.kitchen_printed_item_ids = data?.printedItemIds || [];
+          dto.kitchen_print_version = data?.printVersion || 0;
+        } else {
+          dto.kitchen_printed_item_ids = [];
+          dto.kitchen_print_version = 0;
         }
         return json({
           order: dto,
@@ -2969,6 +2994,157 @@
             handleFirestoreError(err, OperationType.UPDATE, ordRef.path);
           });
           return json({ ok: true });
+        }
+
+        if (task === 'transfer') {
+          if (!validKey(body.request_key) || !num(body.target_table_number, 1, 9999) || clean(body.reason, 200).length < 3 || !num(body.version, 1, 1000000000)) {
+            fail(400, 'Informe a mesa de destino, o motivo e atualize a comanda.');
+          }
+          const tables = await getDocs(query(collection(db, 'businesses', businessId, 'tables'), where('number', '==', body.target_table_number), limit(1)));
+          if (tables.empty || !tables.docs[0].data().active) fail(400, 'Mesa de destino não cadastrada ou inativa.');
+          const targetLockRef = tableLockDocRef(businessId, body.target_table_number);
+          const operationId = idemDocId('order_transfer', body.request_key);
+          const operationRef = orderOperationRef(businessId, operationId);
+          let resultPayload = null;
+          await runTransaction(db, async (tx) => {
+            const [operationSnap, orderSnap, sourceLockSnap, targetLockSnap] = await Promise.all([
+              tx.get(operationRef), tx.get(ordRef), tableLockRef ? tx.get(tableLockRef) : Promise.resolve(null), tx.get(targetLockRef)
+            ]);
+            if (operationSnap.exists()) { resultPayload = operationSnap.data().result; return; }
+            if (!orderSnap.exists()) fail(404, 'Comanda não encontrada.');
+            const order = orderSnap.data();
+            if (order.state !== 'open' || order.version !== body.version || (order.paidCents || 0) > 0) fail(409, 'A comanda mudou, foi recebida ou finalizada. Atualize.');
+            if (order.tableNumber == null || order.tableNumber === body.target_table_number) fail(400, 'Escolha outra mesa para transferir.');
+            if (targetLockSnap.exists() && targetLockSnap.data().active) fail(409, 'A mesa de destino já possui uma comanda.');
+            if (!sourceLockSnap?.exists() || !sourceLockSnap.data().active || sourceLockSnap.data().resourceId !== id) fail(409, 'O vínculo da mesa de origem mudou. Atualize.');
+            tx.update(ordRef, { tableNumber: body.target_table_number, authorizedBy: operationId, version: order.version + 1, updatedAt: serverTimestamp() });
+            tx.update(tableLockRef, { active: false, version: (sourceLockSnap.data().version || 1) + 1, updatedAt: serverTimestamp() });
+            const targetPayload = { id: 'table_' + body.target_table_number, kind: 'table', resourceId: id, active: true, ownerId: order.actorId, orderNumber: order.number, attendantName: order.attendantName, version: targetLockSnap.exists() ? (targetLockSnap.data().version || 1) + 1 : 1, updatedAt: serverTimestamp() };
+            if (targetLockSnap.exists()) tx.update(targetLockRef, targetPayload); else tx.set(targetLockRef, targetPayload);
+            resultPayload = { ok: true, order_id: id, from_table: order.tableNumber, to_table: body.target_table_number };
+            tx.set(operationRef, { ...orderOperationPayload(operationId, 'transfer', id, id, body.reason, user, { fromTable: order.tableNumber, toTable: body.target_table_number }), result: resultPayload });
+          }).catch((err) => { if (err instanceof HttpError) throw err; handleFirestoreError(err, OperationType.WRITE, ordRef.path); });
+          return json(resultPayload);
+        }
+
+        if (task === 'merge') {
+          if (!validKey(body.request_key) || typeof body.target_order_id !== 'string' || body.target_order_id === id || clean(body.reason, 200).length < 3 || !num(body.version, 1, 1000000000) || !num(body.target_version, 1, 1000000000)) {
+            fail(400, 'Escolha outra comanda e informe o motivo da junção.');
+          }
+          const targetRef = doc(db, 'businesses', businessId, 'orders', body.target_order_id);
+          const operationId = idemDocId('order_merge', body.request_key);
+          const operationRef = orderOperationRef(businessId, operationId);
+          let resultPayload = null;
+          await runTransaction(db, async (tx) => {
+            const [operationSnap, sourceSnap, targetSnap, sourceLockSnap] = await Promise.all([
+              tx.get(operationRef), tx.get(ordRef), tx.get(targetRef), tableLockRef ? tx.get(tableLockRef) : Promise.resolve(null)
+            ]);
+            if (operationSnap.exists()) { resultPayload = operationSnap.data().result; return; }
+            if (!sourceSnap.exists() || !targetSnap.exists()) fail(404, 'Comanda de origem ou destino não encontrada.');
+            const source = sourceSnap.data(), target = targetSnap.data();
+            if (source.state !== 'open' || target.state !== 'open' || source.version !== body.version || target.version !== body.target_version) fail(409, 'Uma das comandas mudou. Atualize antes de juntar.');
+            if ((source.paidCents || 0) || (target.paidCents || 0) || (source.discountCents || 0) || (target.discountCents || 0)) fail(409, 'Somente comandas sem recebimentos e sem desconto podem ser juntadas.');
+            if ((source.items || []).length + (target.items || []).length > 100) fail(400, 'A comanda resultante ultrapassaria 100 itens.');
+            const combined = [...(target.items || []), ...(source.items || [])];
+            const combinedTotal = storedItemsTotal(combined);
+            if (combinedTotal !== source.totalCents + target.totalCents) fail(409, 'Os totais das comandas não conferem. Atualize e solicite suporte.');
+            tx.update(targetRef, { items: combined, totalCents: combinedTotal, fulfillment: 'pending', authorizedBy: operationId, version: target.version + 1, updatedAt: serverTimestamp() });
+            tx.update(ordRef, { items: [], totalCents: 0, state: 'cancelled', fulfillment: 'delivered', checkoutWaiting: false, authorizedBy: operationId, version: source.version + 1, updatedAt: serverTimestamp() });
+            if (source.tableNumber != null) {
+              if (!sourceLockSnap?.exists() || !sourceLockSnap.data().active || sourceLockSnap.data().resourceId !== id) fail(409, 'A mesa da comanda de origem mudou. Atualize.');
+              tx.update(tableLockRef, { active: false, version: (sourceLockSnap.data().version || 1) + 1, updatedAt: serverTimestamp() });
+            }
+            resultPayload = { ok: true, source_order_id: id, target_order_id: target.id, target_number: target.number, total_cents: combinedTotal };
+            tx.set(operationRef, { ...orderOperationPayload(operationId, 'merge', id, target.id, body.reason, user, { sourceTable: source.tableNumber, targetTable: target.tableNumber, sourceTotal: source.totalCents, targetTotalBefore: target.totalCents }), result: resultPayload });
+          }).catch((err) => { if (err instanceof HttpError) throw err; handleFirestoreError(err, OperationType.WRITE, ordRef.path); });
+          return json(resultPayload);
+        }
+
+        if (task === 'split') {
+          if (!validKey(body.request_key) || !Array.isArray(body.items) || !body.items.length || body.items.length > 100 || clean(body.reason, 200).length < 3 || !num(body.version, 1, 1000000000) || !(body.target_table_number == null || num(body.target_table_number, 1, 9999))) {
+            fail(400, 'Selecione os itens, confira a mesa e informe o motivo da separação.');
+          }
+          let targetTableRef = null;
+          if (body.target_table_number != null) {
+            const tables = await getDocs(query(collection(db, 'businesses', businessId, 'tables'), where('number', '==', body.target_table_number), limit(1)));
+            if (tables.empty || !tables.docs[0].data().active) fail(400, 'Mesa de destino não cadastrada ou inativa.');
+            targetTableRef = tableLockDocRef(businessId, body.target_table_number);
+          }
+          const operationId = idemDocId('order_split', body.request_key);
+          const operationRef = orderOperationRef(businessId, operationId);
+          const newOrderId = crypto.randomUUID();
+          let resultPayload = null;
+          await runTransaction(db, async (tx) => {
+            const operationSnap = await tx.get(operationRef);
+            const sourceSnap = await tx.get(ordRef);
+            const targetLockSnap = targetTableRef ? await tx.get(targetTableRef) : null;
+            const counterOp = await prepareCounter(tx, businessId, 'orders');
+            if (operationSnap.exists()) { resultPayload = operationSnap.data().result; return; }
+            if (!sourceSnap.exists()) fail(404, 'Comanda não encontrada.');
+            const source = sourceSnap.data();
+            if (source.state !== 'open' || source.version !== body.version) fail(409, 'A comanda mudou. Atualize antes de separar.');
+            if ((source.paidCents || 0) || (source.discountCents || 0)) fail(409, 'Somente comandas sem recebimentos e sem desconto podem ser separadas.');
+            if (targetLockSnap?.exists() && targetLockSnap.data().active) fail(409, 'A mesa de destino já possui uma comanda.');
+            const requested = new Map();
+            for (const selection of body.items) {
+              if (typeof selection.item_id !== 'string' || !num(selection.quantity, 1, 999) || requested.has(selection.item_id)) fail(400, 'Seleção de itens inválida.');
+              requested.set(selection.item_id, selection.quantity);
+            }
+            const remaining = [], moved = [];
+            for (const item of source.items || []) {
+              const quantity = requested.get(item.id) || 0;
+              if (quantity > item.quantity) fail(409, 'A quantidade selecionada não está mais disponível.');
+              if (quantity) moved.push({ ...item, id: crypto.randomUUID(), quantity });
+              if (item.quantity > quantity) remaining.push({ ...item, quantity: item.quantity - quantity });
+              requested.delete(item.id);
+            }
+            if (requested.size || !moved.length) fail(400, 'Um item selecionado não pertence mais à comanda.');
+            if (!remaining.length) fail(400, 'Para mover a conta inteira, use transferência ou junção de comanda.');
+            const remainingTotal = storedItemsTotal(remaining), movedTotal = storedItemsTotal(moved);
+            if (remainingTotal + movedTotal !== source.totalCents) fail(409, 'A separação não preservou o total original. Atualize e solicite suporte.');
+            const number = counterOp.value; counterOp.apply();
+            tx.update(ordRef, { items: remaining, totalCents: remainingTotal, fulfillment: 'pending', authorizedBy: operationId, version: source.version + 1, updatedAt: serverTimestamp() });
+            tx.set(doc(db, 'businesses', businessId, 'orders', newOrderId), { id: newOrderId, number, requestKey: body.request_key, tableNumber: body.target_table_number ?? null, state: 'open', fulfillment: 'pending', items: moved, totalCents: movedTotal, discountCents: 0, paidCents: 0, refundCents: 0, actorId: user.id, attendantName: user.name || 'Caixa', customerId: source.customerId || null, customerName: source.customerName || '', checkoutWaiting: false, authorizedBy: operationId, version: 1, createdAt: serverTimestamp(), updatedAt: serverTimestamp() });
+            if (targetTableRef) {
+              const lock = { id: 'table_' + body.target_table_number, kind: 'table', resourceId: newOrderId, active: true, ownerId: user.id, orderNumber: number, attendantName: user.name || 'Caixa', version: targetLockSnap.exists() ? (targetLockSnap.data().version || 1) + 1 : 1, updatedAt: serverTimestamp() };
+              if (targetLockSnap.exists()) tx.update(targetTableRef, lock); else tx.set(targetTableRef, lock);
+            }
+            resultPayload = { ok: true, source_order_id: id, new_order_id: newOrderId, new_number: number, source_total_cents: remainingTotal, new_total_cents: movedTotal };
+            tx.set(operationRef, { ...orderOperationPayload(operationId, 'split', id, newOrderId, body.reason, user, { sourceTable: source.tableNumber, targetTable: body.target_table_number ?? null, moved: body.items }), result: resultPayload });
+          }).catch((err) => { if (err instanceof HttpError) throw err; handleFirestoreError(err, OperationType.WRITE, ordRef.path); });
+          return json(resultPayload, 201);
+        }
+
+        if (task === 'kitchen-print') {
+          if (!validKey(body.request_key) || !num(body.version, 1, 1000000000)) fail(400, 'Atualize a comanda antes de gerar a impressão.');
+          const operationId = idemDocId('kitchen_print', body.request_key);
+          const operationRef = orderOperationRef(businessId, operationId);
+          const printStateRef = doc(db, 'businesses', businessId, 'orderPrintStates', id);
+          let printedOrder = null;
+          let resultPayload = null;
+          await runTransaction(db, async (tx) => {
+            const [operationSnap, orderSnap, printStateSnap] = await Promise.all([tx.get(operationRef), tx.get(ordRef), tx.get(printStateRef)]);
+            if (operationSnap.exists()) { resultPayload = operationSnap.data().result; return; }
+            if (!orderSnap.exists()) fail(404, 'Comanda não encontrada.');
+            const order = orderSnap.data();
+            if (order.state === 'cancelled' || order.version !== body.version) fail(409, 'A comanda mudou. Atualize antes de imprimir.');
+            const currentPrintState = printStateSnap.exists() ? printStateSnap.data() : null;
+            const printed = new Set(currentPrintState?.printedItemIds || []);
+            const pending = (order.items || []).filter((item) => !printed.has(item.id));
+            if (!pending.length) fail(409, 'Não há itens novos. Use reimprimir pedido completo se necessário.');
+            const nextIds = [...printed, ...pending.map((item) => item.id)];
+            const printVersion = (currentPrintState?.printVersion || 0) + 1;
+            const printState = { orderId: id, printedItemIds: nextIds, printVersion, lastOperationId: operationId, updatedAt: serverTimestamp() };
+            if (printStateSnap.exists()) tx.update(printStateRef, printState); else tx.set(printStateRef, printState);
+            resultPayload = { ok: true, item_ids: pending.map((item) => item.id), print_version: printVersion };
+            tx.set(operationRef, { ...orderOperationPayload(operationId, 'kitchen_print', id, id, 'Impressão de cozinha', user, { itemIds: resultPayload.item_ids, printVersion }), result: resultPayload });
+            printedOrder = { ...order, items: pending };
+          }).catch((err) => { if (err instanceof HttpError) throw err; handleFirestoreError(err, OperationType.WRITE, ordRef.path); });
+          if (!printedOrder) {
+            const latest = await getDoc(ordRef); const all = latest.data();
+            printedOrder = { ...all, items: (all.items || []).filter((item) => resultPayload.item_ids.includes(item.id)) };
+          }
+          return json({ order: orderDto(printedOrder), payments: [], settings: settingsDto(currentSettings, account.business), print_kind: resultPayload.print_version === 1 ? 'first' : 'complement', print_version: resultPayload.print_version });
         }
 
         if (task === 'payment') {

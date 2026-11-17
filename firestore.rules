@@ -565,6 +565,31 @@ service cloud.firestore {
         && isOptionalTimestamp(data.get('closedAt', null));
     }
 
+    function isValidOrderOperation(value, operationId) {
+      let data = value;
+      return data.keys().hasAll(['id', 'kind', 'sourceOrderId', 'reason', 'actorId', 'details', 'result', 'createdAt'])
+        && data.keys().hasOnly(['id', 'kind', 'sourceOrderId', 'targetOrderId', 'reason', 'actorId', 'details', 'result', 'createdAt'])
+        && data.id == operationId && isValidId(data.id)
+        && data.kind in ['transfer', 'merge', 'split', 'kitchen_print']
+        && isValidId(data.sourceOrderId)
+        && isOptionalId(data.get('targetOrderId', null))
+        && isNonEmptyString(data.reason, 3, 200)
+        && data.actorId == request.auth.uid
+        && data.details is map && data.result is map
+        && data.createdAt == request.time;
+    }
+
+    function isValidOrderPrintState(value, orderId) {
+      let data = value;
+      return data.keys().hasAll(['orderId', 'printedItemIds', 'printVersion', 'lastOperationId', 'updatedAt'])
+        && data.keys().hasOnly(['orderId', 'printedItemIds', 'printVersion', 'lastOperationId', 'updatedAt'])
+        && data.orderId == orderId && isValidId(data.orderId)
+        && isListOfStrings(data.printedItemIds, 100)
+        && isIntRange(data.printVersion, 1, 1000000000)
+        && isValidId(data.lastOperationId)
+        && data.updatedAt == request.time;
+    }
+
     function isValidDraft(value, draftId) {
       let data = value;
       return data.keys().hasAll(['id', 'requestKey', 'ownerId', 'title', 'items', 'state', 'version', 'createdAt', 'updatedAt'])
@@ -1238,6 +1263,11 @@ service cloud.firestore {
           let business = get(businessPath(businessId)).data;
           let previous = resource.data;
           let changes = next.diff(previous).affectedKeys();
+          let advanced = previous.discountCents == 0 && next.discountCents == 0
+            && changes.hasAny(['authorizedBy']) && changes.hasAny(['items', 'tableNumber']);
+          let operation = advanced
+            ? getAfter(/databases/$(database)/documents/businesses/$(businessId)/orderOperations/$(next.authorizedBy)).data
+            : {};
           return (platform || (member.get('active', false) == true && business.active == true && business.deleted == false)) && isValidId(businessId) && isValidId(orderId)
           && next.version == previous.version + 1
           && next.get('paidCents', 0) <= next.totalCents
@@ -1248,6 +1278,43 @@ service cloud.firestore {
           && next.createdAt == previous.createdAt
           && next.updatedAt == request.time
           && (
+            advanced ? (
+              operation.actorId == request.auth.uid
+              && (
+                (
+                  operation.kind == 'transfer'
+                  && operation.sourceOrderId == orderId && operation.targetOrderId == orderId
+                  && previous.state == 'open' && next.state == 'open'
+                  && previous.get('paidCents', 0) == 0 && next.get('paidCents', 0) == 0
+                  && next.items == previous.items && next.totalCents == previous.totalCents
+                  && next.get('tableNumber', null) != previous.get('tableNumber', null)
+                  && changes.hasOnly(['tableNumber', 'authorizedBy', 'version', 'updatedAt'])
+                  && (platform || resolvedMemberPerm(member, profile, 'payments.receive'))
+                )
+                || (
+                  operation.kind == 'merge'
+                  && previous.state == 'open' && previous.get('paidCents', 0) == 0 && previous.discountCents == 0
+                  && next.get('paidCents', 0) == 0 && next.discountCents == 0
+                  && (
+                    (operation.sourceOrderId == orderId && next.state == 'cancelled' && next.items.size() == 0 && next.totalCents == 0
+                      && changes.hasOnly(['items', 'totalCents', 'state', 'fulfillment', 'checkoutWaiting', 'authorizedBy', 'version', 'updatedAt']))
+                    || (operation.targetOrderId == orderId && next.state == 'open' && next.items.size() <= 100 && next.totalCents > previous.totalCents
+                      && changes.hasOnly(['items', 'totalCents', 'fulfillment', 'authorizedBy', 'version', 'updatedAt']))
+                  )
+                  && (platform || resolvedMemberPerm(member, profile, 'payments.receive'))
+                )
+                || (
+                  operation.kind == 'split'
+                  && operation.sourceOrderId == orderId
+                  && previous.state == 'open' && next.state == 'open'
+                  && previous.get('paidCents', 0) == 0 && next.get('paidCents', 0) == 0
+                  && previous.discountCents == 0 && next.discountCents == 0
+                  && next.items.size() > 0 && next.totalCents > 0 && next.totalCents < previous.totalCents
+                  && changes.hasOnly(['items', 'totalCents', 'fulfillment', 'authorizedBy', 'version', 'updatedAt'])
+                  && (platform || resolvedMemberPerm(member, profile, 'payments.receive'))
+                )
+              )
+            ) : (
             // 1. An items mutation can only use the add-items transition.
             changes.hasAny(['items']) ? (
               !isRetail(businessId)
@@ -1378,7 +1445,7 @@ service cloud.firestore {
               && (platform || resolvedMemberPerm(member, profile, 'payments.refund'))
               && (previous.actorId == request.auth.uid || platform || resolvedMemberPerm(member, profile, 'orders.shared'))
             )
-            )
+            ))
           );
         }
         function canReceiveOrderPayment() {
@@ -1745,6 +1812,37 @@ service cloud.firestore {
           && incoming().createdAt == request.time
           && isTenantMemberOrPlatform(businessId);
         allow update, delete: if false;
+      }
+
+      // Audited advanced order operations
+      match /orderOperations/{operationId} {
+        allow get, list: if hasTenantPerm(businessId, 'orders.shared');
+        allow create: if resource == null && isValidOrderOperation(incoming(), operationId)
+          && (
+            (incoming().kind == 'kitchen_print' && hasTenantPerm(businessId, 'orders.print'))
+            || (incoming().kind in ['transfer', 'merge', 'split'] && hasTenantPerm(businessId, 'payments.receive'))
+          );
+        allow update, delete: if false;
+      }
+
+      // Tracks which item lines were already sent to the kitchen without
+      // changing the commercial order or its payment/version lifecycle.
+      match /orderPrintStates/{orderId} {
+        allow get: if isValidId(businessId) && isValidId(orderId)
+          && hasTenantPerm(businessId, 'orders.print');
+        allow list: if false;
+        allow create: if resource == null && isValidId(businessId) && isValidId(orderId)
+          && hasTenantPerm(businessId, 'orders.print')
+          && isValidOrderPrintState(incoming(), orderId)
+          && incoming().printVersion == 1
+          && getAfter(/databases/$(database)/documents/businesses/$(businessId)/orderOperations/$(incoming().lastOperationId)).data.kind == 'kitchen_print';
+        allow update: if isValidId(businessId) && isValidId(orderId)
+          && hasTenantPerm(businessId, 'orders.print')
+          && isValidOrderPrintState(incoming(), orderId)
+          && incoming().printVersion == existing().printVersion + 1
+          && incoming().printedItemIds.size() >= existing().printedItemIds.size()
+          && getAfter(/databases/$(database)/documents/businesses/$(businessId)/orderOperations/$(incoming().lastOperationId)).data.kind == 'kitchen_print';
+        allow delete: if false;
       }
 
       // Atomic Resource Locks (active cash session & table occupancy)

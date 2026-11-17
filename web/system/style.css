@@ -23,3 +23,15 @@ nav{flex:1;min-height:110px;overflow-y:auto}.brand,.shop,.navlabel,.asidefoot{fl
 
 .btn.primary,.primary,.favorite.on{background:var(--green)!important;border-color:var(--green)!important}.brand img{object-fit:contain;max-width:190px;max-height:80px}
 .help-grid{display:grid;grid-template-columns:minmax(240px,1fr) minmax(0,2fr);gap:20px}.help-ticket{display:block;width:100%;text-align:left;padding:14px;background:white;border:1px solid var(--line);border-radius:8px;margin-top:12px;color:var(--ink)}.help-ticket.selected{border:2px solid var(--green)}.help-ticket small{display:block;margin-top:8px;color:var(--muted)}.help-message{padding:14px;border:1px solid var(--line);border-radius:9px;margin-bottom:12px}.help-message.platform{background:#faf2e5}.help-message p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7}.help-message small{color:var(--muted)}.help-messages{max-height:50vh;overflow:auto;margin:20px 0}.help-unread{color:var(--green)!important;font-weight:bold}#helpReply textarea{width:100%}@media(max-width:800px){.help-grid{grid-template-columns:1fr}}
+
+/* Cadastro de opções e adicionais */
+.catalog-option{border:1px solid var(--line,#ead8c6);border-radius:10px;padding:14px;margin:12px 0;min-width:0}
+.catalog-option legend{font-weight:600;padding:0 5px}
+.catalog-addon{display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;border-bottom:1px solid #ead8c6;padding:12px 0}
+.catalog-addon .textbtn{grid-column:1/-1;justify-self:start}
+.catalog-check{display:flex!important;align-items:center;gap:8px}
+.catalog-check input{width:auto!important}
+.catalog-availability{margin:0 16px 16px;align-self:start}
+@media(max-width:650px){.catalog-addon{grid-template-columns:1fr}.catalog-addon .textbtn{grid-column:auto}}
+
+.addon-selection{display:grid;grid-template-columns:1fr 90px;gap:12px;align-items:center;border-bottom:1px solid #ead8c6;padding:8px 0}

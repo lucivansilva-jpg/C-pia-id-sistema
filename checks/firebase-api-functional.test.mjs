@@ -23,6 +23,7 @@ class FakeTimestamp {
   }
 }
 
+let beforeTransactionHook=null;
 const SERVER_TS = Symbol('serverTimestamp');
 let clockMs = Date.parse('2026-11-16T12:00:00.000Z');
 const tickClock = () => {
@@ -406,6 +407,7 @@ const sdk = {
     };
   },
   async runTransaction(_db, fn) {
+    if(beforeTransactionHook){const hook=beforeTransactionHook;beforeTransactionHook=null;hook();}
     for (let attempt = 0; attempt < 8; attempt += 1) {
       const readVersions = new Map();
       const writes = [];
@@ -1094,6 +1096,43 @@ let directOrderId;
   const legacyTable = await req('POST', '/api/tables', { number: 3 });
   assert.equal(legacyTable.status, 201, JSON.stringify(legacyTable.data));
   console.log('PASS [11] Retail modality isolation, draft -> direct sale -> return, and legacy food preservation');
+}
+
+
+// 12. Product configuration + availability + concurrent catalogue change cannot charge stale prices.
+{
+  seedTenant('biz_catalog','food');
+  const manager=makeAccount('biz_catalog','catalog_admin','Administrador','admin');
+  asAccount(manager);
+  const created=await req('POST','/api/products',{name:'Tapioca configurável',price_cents:1000,cost_cents:null,stock_mode:'none',sale_unit:'un',active:true,available:true,visible:true,options:[{label:'Recheio',values:['Frango','Queijo'],required:true}],addons:[{name:'Queijo extra',price_cents:200,cost_cents:null}]});
+  assert.equal(created.status,201,JSON.stringify(created.data));
+  const id=created.data.id,productPath=`businesses/biz_catalog/products/${id}`,publicPath=`businesses/biz_catalog/publicProducts/${id}`;
+  assert.equal(store.get(publicPath).addons[0].price_cents,200);
+  assert.equal(store.get(publicPath).addons[0].cost_cents,undefined);
+  const cashier=makeAccount('biz_catalog','catalog_cashier','Caixa','cashier',{'products.manage':false});
+  asAccount(cashier);
+  assert.equal((await req('PATCH',`/api/products/${id}/availability`,{available:false,version:1})).status,403);
+  asAccount(manager);
+  assert.equal((await req('PATCH',`/api/products/${id}/availability`,{available:false,version:1})).status,200);
+  assert.equal(store.get(publicPath).available,false);
+  assert.equal((await req('PATCH',`/api/products/${id}/availability`,{available:true,version:1})).status,409);
+  assert.equal((await req('PATCH',`/api/products/${id}/availability`,{available:true,version:2})).status,200);
+  const cash=await req('POST','/api/cash/open',{request_key:'catalog_open_0001',opening_cents:1000});
+  const sale={request_key:'catalog_sale_0001',session_id:cash.data.id,method:'pix',expected_total_cents:1400,items:[{product_id:id,quantity:1,selections:{Recheio:'Frango'},addons:[{name:'Queijo extra',quantity:2}]}]};
+  assert.equal((await req('POST','/api/sales/direct',{...sale,items:[{product_id:id,quantity:1}]})).status,400);
+  const confirmed=await req('POST','/api/sales/direct',sale);
+  assert.equal(confirmed.status,201,JSON.stringify(confirmed.data));
+  const sold=store.get(`businesses/biz_catalog/orders/${confirmed.data.id}`);
+  assert.equal(sold.totalCents,1400);assert.equal(sold.items[0].addons[0].quantity,2);
+  beforeTransactionHook=()=>{const product=store.get(productPath);store.set(productPath,{...product,available:false,version:product.version+1});versions.set(productPath,(versions.get(productPath)||0)+1);};
+  const blocked=await req('POST','/api/sales/direct',{...sale,request_key:'catalog_race_0001'});
+  assert.equal(blocked.status,409,JSON.stringify(blocked.data));
+  assert.equal(store.get(`businesses/biz_catalog/cashSessions/${cash.data.id}`).methodTotals.pix,1400);
+  const product=store.get(productPath);store.set(productPath,{...product,available:true});
+  beforeTransactionHook=()=>{const product=store.get(productPath);store.set(productPath,{...product,priceCents:1100,version:product.version+1});versions.set(productPath,(versions.get(productPath)||0)+1);};
+  assert.equal((await req('POST','/api/sales/direct',{...sale,request_key:'catalog_race_0002'})).status,409);
+  assert.equal(sold.totalCents,1400,'Histórico da venda não muda com edição do produto.');
+  console.log('PASS [12] Opções obrigatórias, adicionais com quantidade, disponibilidade, projeção pública e corrida de preço/esgotamento');
 }
 
 console.log(`ALL_FUNCTIONAL_TESTS_PASSED (simulated reads counted: ${readCount})`);

@@ -458,7 +458,7 @@ service cloud.firestore {
     function isValidPublicProduct(value, productId) {
       let data = value;
       return data.keys().hasAll(['id', 'name', 'priceCents', 'available', 'visible', 'options', 'updatedAt'])
-        && data.keys().hasOnly(['id', 'name', 'description', 'category', 'priceCents', 'available', 'visible', 'options', 'imageDataUrl', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'name', 'description', 'category', 'priceCents', 'available', 'visible', 'options', 'addons', 'imageDataUrl', 'updatedAt'])
         && isValidId(data.id) && data.id == productId
         && isNonEmptyString(data.name, 1, 100)
         && isOptionalString(data.get('description', null), 500)
@@ -467,6 +467,7 @@ service cloud.firestore {
         && data.available is bool
         && data.visible is bool
         && isListOfMaps(data.options, 8)
+        && isListOfMaps(data.get('addons', []), 30)
         && isOptionalString(data.get('imageDataUrl', null), 450000)
         && data.updatedAt is timestamp;
     }

@@ -131,6 +131,7 @@
     if (path === '/api/profiles' || /^\/api\/profiles\/(admin|cashier|waiter)$/.test(path) || /^\/api\/employees\/[^/]+$/.test(path)) {
       return 'employees.manage';
     }
+    if (/^\/api\/products\/[^/]+\/availability$/.test(path) && method==='PATCH') return 'products.manage';
     if (path === '/api/sales/direct' && method === 'POST') return 'payments.receive';
     if (path.startsWith('/api/erp/')) return 'reports.view';
     if (path === '/api/session' && method === 'GET') return 'profile.read';
@@ -268,12 +269,13 @@
     if (!Array.isArray(value) || value.length > 8) fail(400, 'Informe até oito grupos de opções.');
     const labels = new Set();
     return value.map((g) => {
-      if (!g || typeof g !== 'object' || !clean(g.label, 60) || !Array.isArray(g.values) || g.values.length < 1 || g.values.length > 30) {
+      if (!g || typeof g !== 'object' || typeof g.label!=='string' || !clean(g.label, 60) || !Array.isArray(g.values) || g.values.length < 1 || g.values.length > 30) {
         fail(400, 'Grupo de opções inválido.');
       }
       const label = clean(g.label, 60);
       if (labels.has(label)) fail(400, 'Não repita o nome de um grupo.');
       labels.add(label);
+      if(g.values.some(v=>typeof v!=='string'))fail(400,'As opções devem ser textos.');
       const values = [...new Set(g.values.map((v) => clean(v, 60)))];
       if (values.some((v) => !v)) fail(400, 'Opção vazia.');
       return { label, values, required: g.required !== false };
@@ -285,6 +287,7 @@
     if (!Array.isArray(value) || value.length > 30) fail(400, 'Informe até 30 adicionais.');
     const seen = new Set();
     return value.map((a) => {
+      if(!a||typeof a!=='object'||typeof a.name!=='string')fail(400,'Adicional inválido.');
       const name = clean(a.name, 60);
       if (!name || seen.has(name) || !num(a.price_cents, 0, 10000000) || !(a.cost_cents == null || num(a.cost_cents, 0, 10000000))) {
         fail(400, 'Confira nome, valor e custo dos adicionais.');
@@ -299,7 +302,7 @@
   }
 
   function addonCostMap(addons) {
-    const out = {};
+    const out = Object.create(null);
     for (const a of addons || []) {
       out[a.name] = a.cost_cents ?? null;
     }
@@ -308,7 +311,7 @@
 
   function itemSelections(p, item) {
     const groups = p.options || [];
-    const chosen = {};
+    const chosen = Object.create(null);
     for (const g of groups) {
       const v = item.selections?.[g.label];
       if ((v === undefined || v === '') && !g.required) continue;
@@ -705,6 +708,19 @@
   }
 
   async function prepareInventoryDeduction(tx, businessId, pricedItems, sourceId, user) {
+    const uniqueIds=[...new Set(pricedItems.map(i=>i.product_id))];
+    const freshProducts=await Promise.all(uniqueIds.map(id=>tx.get(doc(db,'businesses',businessId,'products',id))));
+    const freshById=new Map(freshProducts.filter(d=>d.exists()).map(d=>[d.id,d.data()]));
+    for(const line of pricedItems){
+      const product=freshById.get(line.product_id);
+      if(!product?.active||!product.available)fail(409,'Um produto ficou esgotado ou inativo. Atualize o catálogo e confira o pedido.');
+      let repriced;
+      try{repriced=priceItem(product,line,user);}catch{fail(409,'As opções ou os adicionais mudaram. Confira o produto antes de lançar.');}
+      if(repriced.unit_price_cents!==line.unit_price_cents || repriced.name!==line.name
+        || repriced.stock_mode!==line.stock_mode || repriced.finished_inventory_id!==line.finished_inventory_id)
+        fail(409,'O cadastro do produto mudou durante o atendimento. Atualize e confira o pedido antes de lançar.');
+    }
+
     const needs = new Map();
     const seenProducts = new Map();
     const toFetch = [];
@@ -948,29 +964,6 @@
     };
   }
 
-  async function syncPublicProduct(businessId, pDoc) {
-    const ref = doc(db, 'businesses', businessId, 'publicProducts', pDoc.id);
-    if (!pDoc.active || !pDoc.visible) {
-      await deleteDoc(ref).catch(() => {});
-      return;
-    }
-    let imageDataUrl = null;
-    if (pDoc.imageKey) {
-      imageDataUrl = await resolveMediaUrl(businessId, pDoc.imageKey);
-    }
-    await setDoc(ref, {
-      id: pDoc.id,
-      name: pDoc.name,
-      description: pDoc.description || '',
-      category: pDoc.category || '',
-      priceCents: pDoc.priceCents,
-      available: !!pDoc.available,
-      visible: true,
-      options: pDoc.options || [],
-      imageDataUrl: imageDataUrl || null,
-      updatedAt: serverTimestamp()
-    }).catch((err) => handleFirestoreError(err, OperationType.WRITE, ref.path));
-  }
 
   async function originalPaymentMethod(businessId, p, allOrderSales) {
     const seen = new Set();
@@ -1487,6 +1480,25 @@
       return json({ products: rows });
     }
 
+    const availabilityMatch=path.match(/^\/api\/products\/([^/]+)\/availability$/);
+    if(availabilityMatch && method==='PATCH'){
+      if(typeof body.available!=='boolean'||!num(body.version,1,1e9))fail(400,'Confira a disponibilidade e a versão do produto.');
+      const id=availabilityMatch[1],ref=doc(db,'businesses',businessId,'products',id);
+      const publicRef=doc(db,'businesses',businessId,'publicProducts',id);
+      const auditId=crypto.randomUUID();
+      await runTransaction(db,async tx=>{
+        const [snap,publicSnap]=await Promise.all([tx.get(ref),tx.get(publicRef)]);
+        if(!snap.exists()||!snap.data().active)fail(404,'Produto ativo não encontrado.');
+        const product=snap.data();
+        if(product.version!==body.version)fail(409,'O produto foi alterado por outra pessoa. Atualize antes de salvar.');
+        tx.update(ref,{available:body.available,version:product.version+1,updatedAt:serverTimestamp()});
+        if(publicSnap.exists())tx.update(publicRef,{available:body.available,updatedAt:serverTimestamp()});
+        else tx.set(publicRef,{id,name:product.name,description:product.description||'',category:product.category||'',priceCents:product.priceCents,available:body.available,visible:!!product.visible,options:product.options||[],addons:stripAddonCosts(product.addons),imageDataUrl:null,updatedAt:serverTimestamp()});
+        tx.set(doc(db,'businesses',businessId,'auditLogs',auditId),{id:auditId,actorId:user.id,action:'product.availability',entityId:id,details:{available:body.available},createdAt:serverTimestamp()});
+      });
+      return json({ok:true,available:body.available});
+    }
+
     if ((path === '/api/products' && method === 'POST') || (/^\/api\/products\/[^/]+$/.test(path) && method === 'PUT')) {
       const creating = path === '/api/products';
       const importKey = creating && typeof body.import_key === 'string' && body.import_key.trim() ? body.import_key.trim().slice(0, 120) : null;
@@ -1535,6 +1547,7 @@
       const imageKey = clean(body.image_key, 128) || null;
       if (imageKey && !(await resolveMediaUrl(businessId, imageKey))) fail(400, 'Foto não encontrada.');
 
+      const publicImageDataUrl=imageKey ? await resolveMediaUrl(businessId,imageKey) : null;
       const costPermission = contractMods.costs && hasPermission(user, 'products.costs');
       if (costPermission && !(body.cost_cents === null || body.cost_cents === undefined || num(body.cost_cents, 0, 100000000))) {
         fail(400, 'Custo inválido.');
@@ -1665,6 +1678,13 @@
           updatedAt: serverTimestamp()
         };
         tx.set(prodRef, savedProduct);
+        const publicRef=doc(db,'businesses',businessId,'publicProducts',id);
+        if(savedProduct.active && savedProduct.visible)tx.set(publicRef,{
+          id,name:savedProduct.name,description:savedProduct.description||'',category:savedProduct.category||'',
+          priceCents:savedProduct.priceCents,available:savedProduct.available,visible:true,
+          options:savedProduct.options||[],addons:stripAddonCosts(savedProduct.addons),imageDataUrl:publicImageDataUrl,updatedAt:serverTimestamp()
+        });
+        else tx.delete(publicRef);
         if (costPermission) {
           tx.set(doc(db, 'businesses', businessId, 'products', id, 'private', 'cost'), {
             costCents,
@@ -1698,7 +1718,6 @@
       });
 
       if (replayedId) return json({ ok: true, id: replayedId, replayed: true });
-      await syncPublicProduct(businessId, savedProduct);
       return json({ ok: true, id }, creating ? 201 : 200);
     }
 

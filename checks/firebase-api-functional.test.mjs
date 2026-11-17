@@ -1152,6 +1152,11 @@ let directOrderId;
   firstRaw=store.get(`businesses/biz_commands/orders/${first.data.id}`);
   const complement=await req('POST',`/api/orders/${first.data.id}/kitchen-print`,{request_key:'commands_print_002',version:firstRaw.version});
   assert.equal(complement.status,200,JSON.stringify(complement.data));assert.equal(complement.data.order.items.length,1);assert.equal(complement.data.print_kind,'complement');
+  firstRaw=store.get(`businesses/biz_commands/orders/${first.data.id}`);
+  const partialCancel=await req('POST',`/api/orders/${first.data.id}/partial-cancel`,{request_key:'commands_partial_cancel1',version:firstRaw.version,reason:'Cliente desistiu do primeiro item',items:[{item_id:firstRaw.items[0].id,quantity:1}]});
+  assert.equal(partialCancel.status,200,JSON.stringify(partialCancel.data));assert.equal(partialCancel.data.kitchen_notice,true);
+  firstRaw=store.get(`businesses/biz_commands/orders/${first.data.id}`);
+  assert.equal(firstRaw.totalCents,2000);assert.equal(firstRaw.items.reduce((sum,item)=>sum+item.quantity,0),2);
 
   const transferred=await req('POST',`/api/orders/${second.data.id}/transfer`,{request_key:'commands_transfer1',target_table_number:3,reason:'Cliente mudou de mesa',version:secondRaw.version});
   assert.equal(transferred.status,200,JSON.stringify(transferred.data));

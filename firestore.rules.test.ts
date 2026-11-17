@@ -653,12 +653,18 @@ async function runEmulatorSuite() {
     await waiterApi('POST', `/api/orders/${commandA.id}/items`, { request_key: 'emulator_command_items1', version: 1, items: [{ product_id: 'prod_1', quantity: 1 }] });
     const complement = await cashierApi('POST', `/api/orders/${commandA.id}/kitchen-print`, { request_key: 'emulator_command_print2', version: 2 });
     assert.equal(complement.print_kind, 'complement');
+    const beforePartialCancel = (await getDoc(doc(cashierNoProd, 'businesses', 'biz_a', 'orders', commandA.id))).data();
+    const partialCancel = await cashierApi('POST', `/api/orders/${commandA.id}/partial-cancel`, {
+      request_key: 'emulator_command_cancel1', reason: 'Cliente desistiu de um item', version: 2,
+      items: [{ item_id: beforePartialCancel.items[0].id, quantity: 1 }]
+    });
+    assert.equal(partialCancel.kitchen_notice, true);
     await cashierApi('POST', `/api/orders/${commandA.id}/transfer`, {
-      request_key: 'emulator_command_move01', target_table_number: 4, reason: 'Cliente mudou de mesa', version: 2
+      request_key: 'emulator_command_move01', target_table_number: 4, reason: 'Cliente mudou de mesa', version: 3
     });
     const commandARaw = (await getDoc(doc(cashierNoProd, 'businesses', 'biz_a', 'orders', commandA.id))).data();
     const split = await cashierApi('POST', `/api/orders/${commandA.id}/split`, {
-      request_key: 'emulator_command_split1', target_table_number: 2, reason: 'Clientes pediram contas separadas', version: 3,
+      request_key: 'emulator_command_split1', target_table_number: 2, reason: 'Clientes pediram contas separadas', version: 4,
       items: [{ item_id: commandARaw.items[0].id, quantity: 1 }]
     });
     const commandB = await waiterApi('POST', '/api/orders', {

@@ -146,7 +146,7 @@
       return ['GET', 'POST', 'DELETE'].includes(method) ? 'drafts.manage' : null;
     }
     if (path === '/api/orders') return method === 'GET' ? 'orders.read' : method === 'POST' ? 'orders.create' : null;
-    const order = path.match(/^\/api\/orders\/[^/]+(?:\/(items|payment|finalize|delivery|cancel|discount|refund|hold|print|transfer|merge|split|kitchen-print))?$/);
+    const order = path.match(/^\/api\/orders\/[^/]+(?:\/(items|payment|finalize|delivery|cancel|partial-cancel|discount|refund|hold|print|transfer|merge|split|kitchen-print))?$/);
     if (order) {
       if (method === 'GET' && order[1] === 'print') return 'orders.print';
       if (method === 'GET' && !order[1]) return 'orders.read';
@@ -159,6 +159,7 @@
           finalize: 'payments.receive',
           delivery: 'orders.deliver',
           cancel: 'orders.cancel',
+          'partial-cancel': 'orders.cancel',
           discount: 'discounts.authorize',
           refund: 'payments.refund',
           transfer: 'payments.receive',
@@ -806,6 +807,55 @@
           kind: 'sale',
           sourceId,
           reason: 'Baixa de estoque na venda',
+          actorId: user.id,
+          createdAt: serverTimestamp()
+        });
+      }
+    };
+  }
+
+  // A partial cancellation reverses only stock that was previously deducted when
+  // the order was created. It uses the item snapshot, never today's product price.
+  async function prepareInventoryRestoration(tx, businessId, cancelledItems, sourceId, reason, user) {
+    const byProduct = new Map();
+    for (const line of cancelledItems) {
+      if (!line.stock_mode || line.stock_mode === 'none') continue;
+      if (!byProduct.has(line.product_id)) byProduct.set(line.product_id, line);
+    }
+    const recipes = new Map();
+    await Promise.all([...byProduct.keys()].map(async (productId) => {
+      const snap = await tx.get(doc(db, 'businesses', businessId, 'recipes', productId));
+      recipes.set(productId, snap.exists() ? snap.data().items || [] : []);
+    }));
+    const needs = new Map();
+    for (const line of cancelledItems) {
+      if (!line.stock_mode || line.stock_mode === 'none') continue;
+      const recipe = recipes.get(line.product_id) || [];
+      if (!recipe.length) {
+        if (line.stock_mode !== 'unit' || !line.finished_inventory_id) fail(409, 'Não foi possível localizar o estoque deste item para cancelar.');
+        needs.set(line.finished_inventory_id, (needs.get(line.finished_inventory_id) || 0) + 1000 * line.quantity);
+      } else {
+        for (const entry of recipe) needs.set(entry.itemId, (needs.get(entry.itemId) || 0) + entry.quantityMilli * line.quantity);
+      }
+    }
+    const restored = await Promise.all([...needs.entries()].map(async ([itemId, quantityMilli]) => {
+      const ref = doc(db, 'businesses', businessId, 'inventoryStock', itemId);
+      const snap = await tx.get(ref);
+      return { itemId, quantityMilli, ref, balanceMilli: snap.exists() ? snap.data().balanceMilli || 0 : null };
+    }));
+    return () => {
+      for (const row of restored) {
+        if (row.balanceMilli === null) fail(409, 'O estoque deste item não está disponível para restauração automática.');
+        tx.update(row.ref, { balanceMilli: row.balanceMilli + row.quantityMilli, updatedAt: serverTimestamp() });
+        const moveId = crypto.randomUUID();
+        tx.set(doc(db, 'businesses', businessId, 'inventoryMoves', moveId), {
+          id: moveId,
+          requestKey: 'partial-cancel:' + sourceId + ':' + row.itemId,
+          itemId: row.itemId,
+          quantityMilli: row.quantityMilli,
+          kind: 'return',
+          sourceId,
+          reason: clean(reason, 200),
           actorId: user.id,
           createdAt: serverTimestamp()
         });
@@ -2906,7 +2956,7 @@
       return json(resultPayload, status);
     }
 
-    const orderMatch = path.match(/^\/api\/orders\/([^/]+)(?:\/(payment|finalize|delivery|cancel|items|hold|print|discount|refund|customer|transfer|merge|split|kitchen-print))?$/);
+    const orderMatch = path.match(/^\/api\/orders\/([^/]+)(?:\/(payment|finalize|delivery|cancel|partial-cancel|items|hold|print|discount|refund|customer|transfer|merge|split|kitchen-print))?$/);
     if (orderMatch) {
       const id = orderMatch[1];
       const task = orderMatch[2];
@@ -3566,6 +3616,58 @@
             handleFirestoreError(err, OperationType.UPDATE, ordRef.path);
           });
           return json({ ok: true });
+        }
+
+        if (task === 'partial-cancel') {
+          if (!validKey(body.request_key) || !Array.isArray(body.items) || !body.items.length || body.items.length > 100 || clean(body.reason, 200).length < 3 || !num(body.version, 1, 1000000000)) {
+            fail(400, 'Selecione os itens, informe o motivo e atualize a comanda.');
+          }
+          const operationId = idemDocId('order_partial_cancel', body.request_key);
+          const operationRef = orderOperationRef(businessId, operationId);
+          const printStateRef = doc(db, 'businesses', businessId, 'orderPrintStates', id);
+          let resultPayload = null;
+          let kitchenNotice = null;
+          await runTransaction(db, async (tx) => {
+            const [operationSnap, orderSnap, printStateSnap] = await Promise.all([tx.get(operationRef), tx.get(ordRef), tx.get(printStateRef)]);
+            if (operationSnap.exists()) { resultPayload = operationSnap.data().result; return; }
+            if (!orderSnap.exists()) fail(404, 'Comanda não encontrada.');
+            const order = orderSnap.data();
+            if (order.state !== 'open' || order.version !== body.version || (order.paidCents || 0) !== 0 || (order.discountCents || 0) !== 0) {
+              fail(409, 'Só é possível cancelar parte de uma comanda aberta, sem recebimento e sem desconto.');
+            }
+            const requested = new Map();
+            for (const entry of body.items) {
+              if (typeof entry.item_id !== 'string' || !num(entry.quantity, 1, 999) || requested.has(entry.item_id)) fail(400, 'Seleção de itens inválida.');
+              requested.set(entry.item_id, entry.quantity);
+            }
+            const remaining = [], cancelled = [];
+            for (const item of order.items || []) {
+              const quantity = requested.get(item.id) || 0;
+              if (quantity > item.quantity) fail(409, 'A quantidade escolhida não está mais disponível. Atualize a comanda.');
+              if (quantity) cancelled.push({ ...item, quantity });
+              if (item.quantity > quantity) remaining.push({ ...item, quantity: item.quantity - quantity });
+              requested.delete(item.id);
+            }
+            if (requested.size || !cancelled.length) fail(400, 'Selecione pelo menos um item válido para cancelar.');
+            if (!remaining.length) fail(400, 'Para cancelar todos os itens, use Cancelar comanda sem recebimento.');
+            const nextTotal = storedItemsTotal(remaining);
+            if (nextTotal >= order.totalCents) fail(409, 'O cancelamento não reduziu o total da comanda.');
+            const restoreInventory = await prepareInventoryRestoration(tx, businessId, cancelled, id, body.reason, user);
+            const printedIds = new Set(printStateSnap.exists() ? printStateSnap.data().printedItemIds || [] : []);
+            const printedCancelled = cancelled.filter((item) => printedIds.has(item.id));
+            resultPayload = { ok: true, order_id: id, cancelled_item_ids: cancelled.map((item) => item.id), total_cents: nextTotal, kitchen_notice: printedCancelled.length > 0 };
+            tx.update(ordRef, { items: remaining, totalCents: nextTotal, authorizedBy: operationId, version: order.version + 1, updatedAt: serverTimestamp() });
+            restoreInventory();
+            tx.set(operationRef, { ...orderOperationPayload(operationId, 'partial_cancel', id, null, body.reason, user, { items: cancelled.map((item) => ({ itemId: item.id, quantity: item.quantity })), kitchenNotice: printedCancelled.length > 0 }), result: resultPayload });
+            const auditId = crypto.randomUUID();
+            tx.set(doc(db, 'businesses', businessId, 'auditLogs', auditId), { id: auditId, actorId: auth.currentUser.uid, action: 'order.partial_cancel: ' + clean(body.reason, 180), entityId: id, createdAt: serverTimestamp() });
+            if (printedCancelled.length) kitchenNotice = orderDto({ ...order, items: printedCancelled });
+          }).catch((err) => { if (err instanceof HttpError) throw err; handleFirestoreError(err, OperationType.WRITE, ordRef.path); });
+          if (!kitchenNotice && resultPayload?.kitchen_notice) {
+            const latest = await getDoc(ordRef); const currentOrder = latest.data();
+            kitchenNotice = orderDto({ ...currentOrder, items: [] });
+          }
+          return json({ ...resultPayload, kitchen_notice_order: kitchenNotice, settings: settingsDto(currentSettings, account.business) });
         }
 
         if (task === 'refund') {

@@ -570,7 +570,7 @@ service cloud.firestore {
       return data.keys().hasAll(['id', 'kind', 'sourceOrderId', 'reason', 'actorId', 'details', 'result', 'createdAt'])
         && data.keys().hasOnly(['id', 'kind', 'sourceOrderId', 'targetOrderId', 'reason', 'actorId', 'details', 'result', 'createdAt'])
         && data.id == operationId && isValidId(data.id)
-        && data.kind in ['transfer', 'merge', 'split', 'kitchen_print']
+        && data.kind in ['transfer', 'merge', 'split', 'kitchen_print', 'partial_cancel']
         && isValidId(data.sourceOrderId)
         && isOptionalId(data.get('targetOrderId', null))
         && isNonEmptyString(data.reason, 3, 200)
@@ -1313,6 +1313,16 @@ service cloud.firestore {
                   && changes.hasOnly(['items', 'totalCents', 'fulfillment', 'authorizedBy', 'version', 'updatedAt'])
                   && (platform || resolvedMemberPerm(member, profile, 'payments.receive'))
                 )
+                || (
+                  operation.kind == 'partial_cancel'
+                  && operation.sourceOrderId == orderId && operation.get('targetOrderId', null) == null
+                  && previous.state == 'open' && next.state == 'open'
+                  && previous.get('paidCents', 0) == 0 && next.get('paidCents', 0) == 0
+                  && previous.discountCents == 0 && next.discountCents == 0
+                  && next.items.size() > 0 && next.totalCents >= 0 && next.totalCents < previous.totalCents
+                  && changes.hasOnly(['items', 'totalCents', 'authorizedBy', 'version', 'updatedAt'])
+                  && (platform || resolvedMemberPerm(member, profile, 'orders.cancel'))
+                )
               )
             ) : (
             // 1. An items mutation can only use the add-items transition.
@@ -1712,6 +1722,7 @@ service cloud.firestore {
           && (
             hasTenantPerm(businessId, 'reports.view')
             || hasTenantPerm(businessId, 'payments.refund')
+            || hasTenantPerm(businessId, 'orders.cancel')
             || ((hasTenantPerm(businessId, 'orders.create') || hasTenantPerm(businessId, 'orders.update') || hasTenantPerm(businessId, 'payments.receive'))
                 && incoming().balanceMilli <= existing().balanceMilli)
           );
@@ -1728,6 +1739,7 @@ service cloud.firestore {
           && (
             hasTenantPerm(businessId, 'reports.view')
             || (hasTenantPerm(businessId, 'payments.refund') && incoming().kind in ['sale', 'return'])
+            || (hasTenantPerm(businessId, 'orders.cancel') && incoming().kind == 'return' && incoming().quantityMilli > 0)
             || ((hasTenantPerm(businessId, 'orders.create') || hasTenantPerm(businessId, 'orders.update') || hasTenantPerm(businessId, 'payments.receive'))
                 && incoming().kind == 'sale' && incoming().quantityMilli <= 0)
           );
@@ -1821,6 +1833,7 @@ service cloud.firestore {
           && (
             (incoming().kind == 'kitchen_print' && hasTenantPerm(businessId, 'orders.print'))
             || (incoming().kind in ['transfer', 'merge', 'split'] && hasTenantPerm(businessId, 'payments.receive'))
+            || (incoming().kind == 'partial_cancel' && hasTenantPerm(businessId, 'orders.cancel'))
           );
         allow update, delete: if false;
       }

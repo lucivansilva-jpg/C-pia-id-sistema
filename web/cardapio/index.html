@@ -1,1 +1,50 @@
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Cardápio</title><link rel="stylesheet" href="/system/style.css"><link rel="stylesheet" href="menu.css"></head><body><main class="menu"><header class="menu-header"><img id="logo" alt="Logomarca" hidden><h1 id="name">Cardápio</h1><p id="info">Carregando…</p><p>Consulte os produtos e faça seu pedido com o atendente.</p></header><label>Buscar produto<input id="search" type="search" placeholder="Nome ou descrição"></label><nav id="categories" aria-label="Categorias"></nav><section id="products" class="productgrid"></section><p id="error" role="alert"></p></main><script src="/contract.js"></script><script src="/config.js"></script><script src="/vendor/firebase-bundle.js"></script><script src="/firebase-client.js"></script><script src="menu.js"></script></body></html>
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Cardápio</title>
+  <link rel="stylesheet" href="/system/style.css">
+  <link rel="stylesheet" href="menu.css">
+</head>
+<body>
+  <main class="menu">
+    <header class="menu-header">
+      <img id="logo" alt="Logomarca" hidden>
+      <h1 id="name">Cardápio</h1>
+      <p id="info">Carregando…</p>
+      <p id="subtitle">Consulte os produtos e faça seu pedido com o atendente.</p>
+      <div id="tableBadge" class="table-badge" hidden></div>
+    </header>
+
+    <section id="trackerBanner" class="tracker-banner panel" hidden></section>
+
+    <div class="menu-toolbar">
+      <label class="menu-search">Buscar produto
+        <input id="search" type="search" placeholder="Nome ou descrição">
+      </label>
+      <button id="openTrackerBtn" type="button" class="btn" hidden>Acompanhar pedido</button>
+    </div>
+
+    <nav id="categories" aria-label="Categorias"></nav>
+    <section id="products" class="productgrid"></section>
+    <p id="error" role="alert"></p>
+  </main>
+
+  <div id="cartBar" class="cart-bar" hidden>
+    <div class="cart-bar-info">
+      <strong id="cartCountLabel">0 itens</strong>
+      <span id="cartTotalLabel">R$ 0,00</span>
+    </div>
+    <button id="openCartBtn" type="button" class="btn primary">Ver carrinho e enviar</button>
+  </div>
+
+  <dialog id="menuDialog" aria-label="Detalhes do pedido"></dialog>
+
+  <script src="/contract.js"></script>
+  <script src="/config.js"></script>
+  <script src="/vendor/firebase-bundle.js"></script>
+  <script src="/firebase-client.js"></script>
+  <script src="menu.js"></script>
+</body>
+</html>

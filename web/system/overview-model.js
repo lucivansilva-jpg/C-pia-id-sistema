@@ -14,7 +14,12 @@
   const stock=data.inventory?.items?.filter(i=>i.active!==false&&i.active!==0&&i.stock_milli<i.minimum_milli)||[];
   const lastClosed=cash?.history?.find(s=>s.state==='closed')||null;
   const waitingDrafts=Array.isArray(data.drafts?.drafts)?data.drafts.drafts.length:null;
-  return {summary,openCount:open?.length??null,deliveryCount:delivery?.length??null,occupiedCount:occupied?.length??null,tableCount:tables?.filter(t=>t.active!==false&&t.active!==0).length??null,dueCents:due,waitingDrafts,cashSession:cash?.session||null,cashAvailable:!!cash,lastClosed,overdue,upcoming,receivables,lowStock:stock,limitedOrders:(orders?.length||0)>=150,limitedAccounts:(finance?.accounts?.length||0)>=300,resultIncomplete:!!summary&&(summary.estimated_result_cents==null||summary.missing_cost_quantity>0||summary.unclassified_expenses>0)};
+  const onlineSummary=data.onlineOrders?.summary||null;
+  const onlineAwaiting=onlineSummary?(onlineSummary.awaiting_count??0):null;
+  const onlineFulfillment=onlineSummary?(onlineSummary.fulfillment_count??0):null;
+  const onlinePredictedCents=onlineSummary?(onlineSummary.predicted_total_cents??0):null;
+  const onlineDeliveryFeesCents=onlineSummary?(onlineSummary.predicted_delivery_fees_cents??0):null;
+  return {summary,openCount:open?.length??null,deliveryCount:delivery?.length??null,occupiedCount:occupied?.length??null,tableCount:tables?.filter(t=>t.active!==false&&t.active!==0).length??null,dueCents:due,waitingDrafts,onlineAwaiting,onlineFulfillment,onlinePredictedCents,onlineDeliveryFeesCents,cashSession:cash?.session||null,cashAvailable:!!cash,lastClosed,overdue,upcoming,receivables,lowStock:stock,limitedOrders:(orders?.length||0)>=150,limitedAccounts:(finance?.accounts?.length||0)>=300,resultIncomplete:!!summary&&(summary.estimated_result_cents==null||summary.missing_cost_quantity>0||summary.unclassified_expenses>0)};
  }
  root.OwnerOverview=Object.freeze({day,addDays,period,validRange,summarize});
 })(globalThis);

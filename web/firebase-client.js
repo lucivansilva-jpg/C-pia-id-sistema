@@ -36,23 +36,23 @@
     documentId
   } = sdk;
 
-  const localHost = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
-  if (window.LOGIN_CONFIG?.developmentOnly && !localHost) {
-    document.addEventListener('DOMContentLoaded', () => {
-      const notice = document.createElement('p'); notice.setAttribute('role','alert');
-      notice.textContent = 'Cópia de desenvolvimento isolada. Use a demonstração ou os emuladores locais; o login remoto está bloqueado.';
-      document.body.prepend(notice);
-    });
-    throw new Error('Firebase remoto bloqueado nesta cópia de desenvolvimento.');
+  // Bloqueio de segurança estrito contra conexão acidental ao banco de produção original
+  const PRODUCTION_DB_ID = 'ai-studio-idsistema-a88ce91d-746f-4ce3-9882-3c20c94ca389';
+  if (FIREBASE_CONFIG.firestoreDatabaseId === PRODUCTION_DB_ID) {
+    throw new Error('Bloqueio de segurança: Esta cópia de desenvolvimento não pode se conectar ao banco de produção.');
   }
-  const emulatorMode = window.LOGIN_CONFIG?.developmentOnly === true;
-  const runtimeConfig = emulatorMode ? {...FIREBASE_CONFIG, projectId:'demo-idsistema-test', apiKey:'demo-key', authDomain:'localhost', firestoreDatabaseId:'(default)'} : FIREBASE_CONFIG;
+
+  const localHost = ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname);
+  const emulatorMode = Boolean(window.LOGIN_CONFIG?.useLocalEmulators && localHost);
+  const runtimeConfig = emulatorMode
+    ? { ...FIREBASE_CONFIG, projectId: 'demo-idsistema-test', apiKey: 'demo-key', authDomain: 'localhost', firestoreDatabaseId: '(default)' }
+    : FIREBASE_CONFIG;
   const app = initializeApp(runtimeConfig);
   const auth = getAuth(app);
   const db = getFirestore(app, runtimeConfig.firestoreDatabaseId);
 
   if (emulatorMode) {
-    sdk.connectAuthEmulator(auth, 'http://127.0.0.1:9099', {disableWarnings:true});
+    sdk.connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
     sdk.connectFirestoreEmulator(db, '127.0.0.1', 8185);
   }
 

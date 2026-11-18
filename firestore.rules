@@ -96,10 +96,39 @@ service cloud.firestore {
       return businessKind(businessId) == 'retail';
     }
 
+    function isValidTrackingToken(token) {
+      return token is string && token.matches('^[a-zA-Z0-9_\\-]{32,80}$');
+    }
+
+    function isValidOnlineRequestId(id) {
+      return id is string && id.matches('^[a-zA-Z0-9_\\-]{24,80}$');
+    }
+
+    function validDeliveryAreas(areas) {
+      return areas is list
+        && areas.size() <= 50
+        && (areas.size() == 0 || (areas[0] is map && areas[0].keys().hasOnly(['id', 'name', 'feeCents', 'minOrderCents', 'estimatedMinutes', 'active'])));
+    }
+
+    function isValidDeliveryAddress(addr) {
+      return addr is map
+        && addr.keys().hasAll(['areaId', 'areaName', 'street', 'number'])
+        && addr.keys().hasOnly(['areaId', 'areaName', 'street', 'number', 'complement', 'reference'])
+        && isNonEmptyString(addr.areaId, 1, 64)
+        && isNonEmptyString(addr.areaName, 1, 80)
+        && isNonEmptyString(addr.street, 2, 160)
+        && isNonEmptyString(addr.number, 1, 30)
+        && isOptionalString(addr.get('complement', null), 120)
+        && isOptionalString(addr.get('reference', null), 160);
+    }
+
     function validModules(mods) {
-      return mods is map && mods.keys().hasOnly(['tables','finance','inventory','costs'])
+      return mods is map
         && mods.keys().hasAll(['tables','finance','inventory','costs'])
-        && mods.tables is bool && mods.finance is bool && mods.inventory is bool && mods.costs is bool;
+        && mods.keys().hasOnly(['tables','finance','inventory','costs','online_orders','delivery'])
+        && mods.tables is bool && mods.finance is bool && mods.inventory is bool && mods.costs is bool
+        && (!('online_orders' in mods) || mods.online_orders is bool)
+        && (!('delivery' in mods) || mods.delivery is bool);
     }
     function quotaChange(businessId, uid, delta) {
       let before = exists(settingsPath(businessId)) ? get(settingsPath(businessId)).data : {};
@@ -121,9 +150,12 @@ service cloud.firestore {
     function hasModule(businessId, mod) {
       let s = exists(settingsPath(businessId)) ? get(settingsPath(businessId)).data : {};
       let mods = s.get('modules', null);
-      return mods == null
-        ? (mod == 'tables' ? !isRetail(businessId) : true)
-        : (mods.get(mod, false) == true && (mod != 'tables' || !isRetail(businessId)));
+      return (!(mod in ['tables', 'online_orders', 'delivery']) || !isRetail(businessId))
+        && (
+          mods == null
+            ? (mod in ['tables', 'finance', 'inventory', 'costs'])
+            : mods.get(mod, false) == true
+        );
     }
 
     function memberPath(businessId, uid) {
@@ -422,7 +454,7 @@ service cloud.firestore {
     function isValidSettings(value) {
       let data = value;
       return data.keys().hasAll(['name', 'mode', 'paper', 'businessKind', 'blindClose', 'updatedAt'])
-        && data.keys().hasOnly(['name', 'mode', 'paper', 'businessKind', 'modules', 'userLimit', 'activeUserCount', 'activeUserChangeUid', 'legalName', 'cnpj', 'address', 'phone', 'receiptMessage', 'blindClose', 'logoKey', 'themeColor', 'updatedAt'])
+        && data.keys().hasOnly(['name', 'mode', 'paper', 'businessKind', 'modules', 'userLimit', 'activeUserCount', 'activeUserChangeUid', 'legalName', 'cnpj', 'address', 'phone', 'receiptMessage', 'blindClose', 'logoKey', 'themeColor', 'onlineOrdersEnabled', 'pickupEnabled', 'pickupMessage', 'deliveryEnabled', 'deliveryMinOrderCents', 'deliveryDefaultMinutes', 'deliveryAreas', 'updatedAt'])
         && isNonEmptyString(data.name, 1, 80)
         && data.mode in ['essential', 'complete']
         && data.paper in [58, 80]
@@ -439,18 +471,33 @@ service cloud.firestore {
         && data.blindClose is bool
         && isOptionalId(data.get('logoKey', null))
         && (data.get('themeColor', null) == null || (data.themeColor is string && data.themeColor.size() == 7 && data.themeColor.matches('^#[a-fA-F0-9]{6}$')))
+        && (!('onlineOrdersEnabled' in data) || data.onlineOrdersEnabled is bool)
+        && (!('pickupEnabled' in data) || data.pickupEnabled is bool)
+        && isOptionalString(data.get('pickupMessage', null), 300)
+        && (!('deliveryEnabled' in data) || data.deliveryEnabled is bool)
+        && isOptionalIntRange(data.get('deliveryMinOrderCents', null), 0, 100000000)
+        && isOptionalIntRange(data.get('deliveryDefaultMinutes', null), 1, 300)
+        && (!('deliveryAreas' in data) || validDeliveryAreas(data.deliveryAreas))
         && data.updatedAt is timestamp;
     }
 
     function isValidPublicSettings(value) {
       let data = value;
       return data.keys().hasAll(['name', 'active', 'updatedAt'])
-        && data.keys().hasOnly(['name', 'address', 'phone', 'logoDataUrl', 'themeColor', 'active', 'updatedAt'])
+        && data.keys().hasOnly(['name', 'address', 'phone', 'logoDataUrl', 'themeColor', 'businessKind', 'onlineOrdersEnabled', 'pickupEnabled', 'pickupMessage', 'deliveryEnabled', 'deliveryMinOrderCents', 'deliveryDefaultMinutes', 'deliveryAreas', 'active', 'updatedAt'])
         && isNonEmptyString(data.name, 1, 80)
         && isOptionalString(data.get('address', null), 300)
         && isOptionalString(data.get('phone', null), 30)
         && isOptionalString(data.get('logoDataUrl', null), 450000)
         && (data.get('themeColor', null) == null || (data.themeColor is string && data.themeColor.size() == 7 && data.themeColor.matches('^#[a-fA-F0-9]{6}$')))
+        && (data.get('businessKind', null) == null || data.businessKind in ['food', 'retail'])
+        && (!('onlineOrdersEnabled' in data) || data.onlineOrdersEnabled is bool)
+        && (!('pickupEnabled' in data) || data.pickupEnabled is bool)
+        && isOptionalString(data.get('pickupMessage', null), 300)
+        && (!('deliveryEnabled' in data) || data.deliveryEnabled is bool)
+        && isOptionalIntRange(data.get('deliveryMinOrderCents', null), 0, 100000000)
+        && isOptionalIntRange(data.get('deliveryDefaultMinutes', null), 1, 300)
+        && (!('deliveryAreas' in data) || validDeliveryAreas(data.deliveryAreas))
         && data.active is bool
         && data.updatedAt is timestamp;
     }
@@ -535,7 +582,7 @@ service cloud.firestore {
 
     function isValidOrder(value, orderId) {
       let data = value;
-      return data.keys().hasOnly(['id', 'number', 'requestKey', 'tableNumber', 'state', 'fulfillment', 'items', 'totalCents', 'discountCents', 'discountReason', 'authorizedBy', 'actorId', 'attendantName', 'customerId', 'customerName', 'checkoutWaiting', 'checkoutHeldAt', 'checkoutHeldBy', 'exchangeFromOrderId', 'paidCents', 'lastLedgerId', 'refundCents', 'version', 'createdAt', 'updatedAt', 'closedAt'])
+      return data.keys().hasOnly(['id', 'number', 'requestKey', 'tableNumber', 'state', 'fulfillment', 'items', 'totalCents', 'discountCents', 'discountReason', 'authorizedBy', 'actorId', 'attendantName', 'customerId', 'customerName', 'checkoutWaiting', 'checkoutHeldAt', 'checkoutHeldBy', 'exchangeFromOrderId', 'paidCents', 'lastLedgerId', 'refundCents', 'orderMode', 'onlineOrderId', 'trackingToken', 'publicCode', 'deliveryFeeCents', 'deliveryAreaId', 'deliveryAreaName', 'deliveryAddress', 'deliveryStatus', 'paymentIntent', 'changeForCents', 'customerPhone', 'version', 'createdAt', 'updatedAt', 'closedAt'])
         && isValidId(data.id) && data.id == orderId
         && isIntRange(data.number, 1, 1000000000)
         && isNonEmptyString(data.requestKey, 12, 80) && data.requestKey.matches('^[a-zA-Z0-9_\\-]+$')
@@ -559,10 +606,87 @@ service cloud.firestore {
         && isOptionalId(data.get('lastLedgerId', null))
         && isOptionalIntRange(data.get('refundCents', null), 0, 100000000)
         && data.get('paidCents', 0) <= data.totalCents
+        && (!('orderMode' in data) || data.orderMode in ['dine_in', 'table', 'pickup', 'delivery'])
+        && isOptionalId(data.get('onlineOrderId', null))
+        && (data.get('trackingToken', null) == null || isValidTrackingToken(data.trackingToken))
+        && isOptionalString(data.get('publicCode', null), 20)
+        && isOptionalIntRange(data.get('deliveryFeeCents', null), 0, 10000000)
+        && isOptionalString(data.get('deliveryAreaId', null), 64)
+        && isOptionalString(data.get('deliveryAreaName', null), 80)
+        && (data.get('deliveryAddress', null) == null || isValidDeliveryAddress(data.deliveryAddress))
+        && (data.get('deliveryStatus', null) == null || data.deliveryStatus in ['confirmed', 'preparing', 'ready_for_pickup', 'out_for_delivery', 'delivered', 'cancelled'])
+        && (data.get('paymentIntent', null) == null || data.paymentIntent in ['cash', 'pix', 'card_on_delivery', 'pay_at_counter'])
+        && isOptionalIntRange(data.get('changeForCents', null), 0, 100000000)
+        && isOptionalString(data.get('customerPhone', null), 30)
         && isIntRange(data.version, 1, 1000000000)
         && data.createdAt is timestamp
         && data.updatedAt is timestamp
         && isOptionalTimestamp(data.get('closedAt', null));
+    }
+
+    function isValidOnlineOrder(value, requestId) {
+      let data = value;
+      return data.keys().hasAll(['id', 'requestKey', 'trackingToken', 'publicCode', 'source', 'mode', 'status', 'customerName', 'customerPhone', 'items', 'subtotalCents', 'deliveryFeeCents', 'paymentIntent', 'totalCents', 'paidCents', 'paymentStatus', 'statusHistory', 'version', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['id', 'requestKey', 'trackingToken', 'publicCode', 'source', 'mode', 'tableNumber', 'status', 'statusReason', 'customerName', 'customerPhone', 'notes', 'items', 'subtotalCents', 'deliveryAreaId', 'deliveryAreaName', 'deliveryFeeCents', 'deliveryAddress', 'estimatedMinutes', 'paymentIntent', 'changeForCents', 'totalCents', 'paidCents', 'paymentStatus', 'convertedOrderId', 'convertedOrderNumber', 'confirmedBy', 'confirmedAt', 'statusHistory', 'version', 'createdAt', 'updatedAt'])
+        && isValidOnlineRequestId(requestId)
+        && data.id == requestId
+        && data.requestKey == requestId
+        && isValidTrackingToken(data.trackingToken)
+        && isNonEmptyString(data.publicCode, 3, 20)
+        && data.source == 'public_menu'
+        && data.mode in ['table', 'pickup', 'delivery']
+        && isOptionalIntRange(data.get('tableNumber', null), 1, 9999)
+        && data.status in ['awaiting_confirmation', 'confirmed', 'preparing', 'ready_for_pickup', 'out_for_delivery', 'delivered', 'rejected', 'cancelled']
+        && isOptionalString(data.get('statusReason', null), 200)
+        && isNonEmptyString(data.customerName, 2, 100)
+        && isNonEmptyString(data.customerPhone, 8, 30)
+        && isOptionalString(data.get('notes', null), 300)
+        && isListOfMaps(data.items, 50) && data.items.size() >= 1
+        && isIntRange(data.subtotalCents, 0, 100000000)
+        && isOptionalString(data.get('deliveryAreaId', null), 64)
+        && isOptionalString(data.get('deliveryAreaName', null), 80)
+        && isIntRange(data.deliveryFeeCents, 0, 10000000)
+        && (data.get('deliveryAddress', null) == null || isValidDeliveryAddress(data.deliveryAddress))
+        && isOptionalIntRange(data.get('estimatedMinutes', null), 1, 300)
+        && data.paymentIntent in ['cash', 'pix', 'card_on_delivery', 'pay_at_counter']
+        && isOptionalIntRange(data.get('changeForCents', null), 0, 100000000)
+        && isIntRange(data.totalCents, 0, 100000000)
+        && data.paidCents == 0
+        && data.paymentStatus == 'unpaid'
+        && isOptionalId(data.get('convertedOrderId', null))
+        && isOptionalIntRange(data.get('convertedOrderNumber', null), 1, 1000000000)
+        && isOptionalId(data.get('confirmedBy', null))
+        && isOptionalTimestamp(data.get('confirmedAt', null))
+        && isListOfMaps(data.statusHistory, 20) && data.statusHistory.size() >= 1
+        && isIntRange(data.version, 1, 1000000000)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPublicOrderTracker(value, token) {
+      let data = value;
+      return data.keys().hasAll(['trackingToken', 'requestId', 'publicCode', 'mode', 'paymentIntent', 'subtotalCents', 'deliveryFeeCents', 'totalCents', 'status', 'itemCount', 'statusHistory', 'version', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['trackingToken', 'requestId', 'publicCode', 'mode', 'tableNumber', 'areaName', 'estimatedMinutes', 'paymentIntent', 'subtotalCents', 'deliveryFeeCents', 'totalCents', 'status', 'statusReason', 'pickupMessage', 'itemCount', 'statusHistory', 'version', 'createdAt', 'updatedAt'])
+        && isValidTrackingToken(token)
+        && data.trackingToken == token
+        && isValidOnlineRequestId(data.requestId)
+        && isNonEmptyString(data.publicCode, 3, 20)
+        && data.mode in ['table', 'pickup', 'delivery']
+        && isOptionalIntRange(data.get('tableNumber', null), 1, 9999)
+        && isOptionalString(data.get('areaName', null), 80)
+        && isOptionalIntRange(data.get('estimatedMinutes', null), 1, 300)
+        && data.paymentIntent in ['cash', 'pix', 'card_on_delivery', 'pay_at_counter']
+        && isIntRange(data.subtotalCents, 0, 100000000)
+        && isIntRange(data.deliveryFeeCents, 0, 10000000)
+        && isIntRange(data.totalCents, 0, 100000000)
+        && data.status in ['awaiting_confirmation', 'confirmed', 'preparing', 'ready_for_pickup', 'out_for_delivery', 'delivered', 'rejected', 'cancelled']
+        && isOptionalString(data.get('statusReason', null), 200)
+        && isOptionalString(data.get('pickupMessage', null), 300)
+        && isIntRange(data.itemCount, 1, 9999)
+        && isListOfMaps(data.statusHistory, 20) && data.statusHistory.size() >= 1
+        && isIntRange(data.version, 1, 1000000000)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
     }
 
     function isValidOrderOperation(value, operationId) {
@@ -1096,7 +1220,7 @@ service cloud.firestore {
         allow update: if resource != null && isValidId(businessId) && isValidId(settingId) && settingId == 'main'
           && isValidSettings(incoming())
           && incoming().updatedAt == request.time
-          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'mode', 'paper', 'businessKind', 'modules', 'userLimit', 'activeUserCount', 'activeUserChangeUid', 'legalName', 'cnpj', 'address', 'phone', 'receiptMessage', 'blindClose', 'logoKey', 'themeColor', 'updatedAt'])
+          && incoming().diff(existing()).affectedKeys().hasOnly(['name', 'mode', 'paper', 'businessKind', 'modules', 'userLimit', 'activeUserCount', 'activeUserChangeUid', 'legalName', 'cnpj', 'address', 'phone', 'receiptMessage', 'blindClose', 'logoKey', 'themeColor', 'onlineOrdersEnabled', 'pickupEnabled', 'pickupMessage', 'deliveryEnabled', 'deliveryMinOrderCents', 'deliveryDefaultMinutes', 'deliveryAreas', 'updatedAt'])
           && (
             (isPlatformAdmin() && (incoming().get('userLimit', null) == null || incoming().userLimit >= incoming().get('activeUserCount',0)))
             || (
@@ -1107,6 +1231,14 @@ service cloud.firestore {
               )
               && incoming().get('modules', null) == existing().get('modules', null)
               && incoming().get('userLimit', null) == existing().get('userLimit', null)
+              && (
+                (incoming().get('onlineOrdersEnabled', false) == false && incoming().get('pickupEnabled', false) == false)
+                || (!isRetail(businessId) && hasModule(businessId, 'online_orders'))
+              )
+              && (
+                incoming().get('deliveryEnabled', false) == false
+                || (!isRetail(businessId) && hasModule(businessId, 'online_orders') && hasModule(businessId, 'delivery'))
+              )
               && (
                 (incoming().get('activeUserCount', null) == existing().get('activeUserCount', null)
                   && incoming().get('activeUserChangeUid', null) == existing().get('activeUserChangeUid', null))
@@ -1125,7 +1257,15 @@ service cloud.firestore {
         allow create, update: if isValidId(businessId) && isValidId(docId) && docId == 'menu'
           && isValidPublicSettings(incoming())
           && incoming().updatedAt == request.time
-          && hasTenantPerm(businessId, 'settings.manage');
+          && hasTenantPerm(businessId, 'settings.manage')
+          && (
+            (incoming().get('onlineOrdersEnabled', false) == false && incoming().get('pickupEnabled', false) == false)
+            || (!isRetail(businessId) && hasModule(businessId, 'online_orders'))
+          )
+          && (
+            incoming().get('deliveryEnabled', false) == false
+            || (!isRetail(businessId) && hasModule(businessId, 'online_orders') && hasModule(businessId, 'delivery'))
+          );
         allow delete: if false;
       }
 
@@ -1246,6 +1386,14 @@ service cloud.firestore {
             || (
               !isRetail(businessId)
               && (incoming().get('tableNumber', null) == null || hasModule(businessId, 'tables'))
+              && (
+                (incoming().get('onlineOrderId', null) == null && !(incoming().get('orderMode', 'dine_in') in ['pickup', 'delivery']))
+                || (
+                  hasModule(businessId, 'online_orders')
+                  && hasTenantPerm(businessId, 'payments.receive')
+                  && (incoming().get('orderMode', 'table') != 'delivery' || hasModule(businessId, 'delivery'))
+                )
+              )
               && hasTenantPerm(businessId, 'orders.create')
               && incoming().state == 'open'
               && incoming().discountCents == 0
@@ -1439,7 +1587,14 @@ service cloud.firestore {
               && previous.get('paidCents', 0) == 0
               && next.fulfillment == 'delivered'
               && isOptionalId(next.get('authorizedBy', null))
-              && changes.hasOnly(['state', 'fulfillment', 'authorizedBy', 'version', 'updatedAt'])
+              && (
+                changes.hasOnly(['state', 'fulfillment', 'authorizedBy', 'version', 'updatedAt'])
+                || (
+                  previous.get('onlineOrderId', null) != null
+                  && next.get('deliveryStatus', null) == 'cancelled'
+                  && changes.hasOnly(['state', 'fulfillment', 'deliveryStatus', 'authorizedBy', 'version', 'updatedAt'])
+                )
+              )
               && (platform || resolvedMemberPerm(member, profile, 'orders.cancel'))
               && (previous.actorId == request.auth.uid || platform || resolvedMemberPerm(member, profile, 'orders.shared'))
             )
@@ -1454,6 +1609,17 @@ service cloud.firestore {
               && changes.hasOnly(['refundCents', 'version', 'updatedAt'])
               && (platform || resolvedMemberPerm(member, profile, 'payments.refund'))
               && (previous.actorId == request.auth.uid || platform || resolvedMemberPerm(member, profile, 'orders.shared'))
+            )
+            // 9. Online / Delivery operational status sync (Cashier/Admin only, never waiter)
+            || (
+              previous.get('onlineOrderId', null) != null
+              && !isRetail(businessId)
+              && hasModule(businessId, 'online_orders')
+              && (platform || resolvedMemberPerm(member, profile, 'payments.receive'))
+              && next.state == previous.state
+              && next.get('deliveryStatus', 'confirmed') in ['confirmed', 'preparing', 'ready_for_pickup', 'out_for_delivery', 'delivered', 'cancelled']
+              && next.fulfillment in ['pending', 'delivered']
+              && changes.hasOnly(['deliveryStatus', 'fulfillment', 'version', 'updatedAt'])
             )
             ))
           );
@@ -1943,6 +2109,106 @@ service cloud.firestore {
             );
           allow update, delete: if false;
         }
+      }
+
+      // Online order requests (strictly isolated from public reads & waiters; cashier/admin only)
+      match /onlineOrders/{requestId} {
+        allow get, list: if !isRetail(businessId)
+          && hasModule(businessId, 'online_orders')
+          && hasTenantPerm(businessId, 'payments.receive');
+        allow create: if resource == null && isValidId(businessId) && isValidOnlineRequestId(requestId)
+          && businessActive(businessId)
+          && !isRetail(businessId)
+          && hasModule(businessId, 'online_orders')
+          && get(/databases/$(database)/documents/businesses/$(businessId)/publicSettings/menu).data.active == true
+          && get(/databases/$(database)/documents/businesses/$(businessId)/publicSettings/menu).data.get('onlineOrdersEnabled', false) == true
+          && isValidOnlineOrder(incoming(), requestId)
+          && incoming().status == 'awaiting_confirmation'
+          && incoming().convertedOrderId == null
+          && incoming().get('convertedOrderNumber', null) == null
+          && incoming().version == 1
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && (
+            (incoming().mode == 'table'
+              && incoming().get('tableNumber', null) != null
+              && incoming().get('deliveryAreaId', null) == null
+              && incoming().get('deliveryAddress', null) == null
+              && incoming().deliveryFeeCents == 0)
+            || (incoming().mode == 'pickup'
+              && get(/databases/$(database)/documents/businesses/$(businessId)/publicSettings/menu).data.get('pickupEnabled', false) == true
+              && incoming().get('tableNumber', null) == null
+              && incoming().get('deliveryAreaId', null) == null
+              && incoming().get('deliveryAddress', null) == null
+              && incoming().deliveryFeeCents == 0)
+            || (incoming().mode == 'delivery'
+              && hasModule(businessId, 'delivery')
+              && get(/databases/$(database)/documents/businesses/$(businessId)/publicSettings/menu).data.get('deliveryEnabled', false) == true
+              && incoming().get('tableNumber', null) == null
+              && isNonEmptyString(incoming().get('deliveryAreaId', ''), 1, 64)
+              && isValidDeliveryAddress(incoming().get('deliveryAddress', null)))
+          )
+          && getAfter(/databases/$(database)/documents/businesses/$(businessId)/publicOrderTrackers/$(incoming().trackingToken)).data.requestId == requestId;
+        allow update: if resource != null && isValidId(businessId) && isValidOnlineRequestId(requestId)
+          && !isRetail(businessId)
+          && hasModule(businessId, 'online_orders')
+          && hasTenantPerm(businessId, 'payments.receive')
+          && isValidOnlineOrder(incoming(), requestId)
+          && incoming().id == existing().id
+          && incoming().requestKey == existing().requestKey
+          && incoming().trackingToken == existing().trackingToken
+          && incoming().publicCode == existing().publicCode
+          && incoming().source == existing().source
+          && incoming().customerName == existing().customerName
+          && incoming().customerPhone == existing().customerPhone
+          && incoming().mode == existing().mode
+          && incoming().get('deliveryAddress', null) == existing().get('deliveryAddress', null)
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().version == existing().version + 1
+          && !(existing().status in ['delivered', 'rejected', 'cancelled'])
+          && (
+            (existing().status == 'awaiting_confirmation' && incoming().status == 'confirmed'
+              && isValidId(incoming().get('convertedOrderId', null))
+              && incoming().get('convertedOrderNumber', null) is int)
+            || (existing().status == 'awaiting_confirmation' && incoming().status == 'rejected'
+              && isNonEmptyString(incoming().get('statusReason', null), 3, 200))
+            || (existing().status == 'confirmed' && incoming().status in ['preparing', 'ready_for_pickup', 'out_for_delivery', 'delivered', 'cancelled'])
+            || (existing().status == 'preparing' && incoming().status in ['ready_for_pickup', 'out_for_delivery', 'delivered', 'cancelled'])
+            || (existing().status in ['ready_for_pickup', 'out_for_delivery'] && incoming().status in ['delivered', 'cancelled'])
+          )
+          && (incoming().status != 'cancelled' || isNonEmptyString(incoming().get('statusReason', null), 3, 200))
+          && getAfter(/databases/$(database)/documents/businesses/$(businessId)/publicOrderTrackers/$(existing().trackingToken)).data.status == incoming().status
+          && getAfter(/databases/$(database)/documents/businesses/$(businessId)/publicOrderTrackers/$(existing().trackingToken)).data.version == existing().version + 1;
+        allow delete: if false;
+      }
+
+      // Sanitized zero-PII public order tracking token doc
+      match /publicOrderTrackers/{trackingToken} {
+        allow get: if isValidId(businessId) && isValidTrackingToken(trackingToken);
+        allow list: if false;
+        allow create: if resource == null && isValidId(businessId) && isValidTrackingToken(trackingToken)
+          && !isRetail(businessId)
+          && hasModule(businessId, 'online_orders')
+          && isValidPublicOrderTracker(incoming(), trackingToken)
+          && incoming().status == 'awaiting_confirmation'
+          && incoming().version == 1
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && getAfter(/databases/$(database)/documents/businesses/$(businessId)/onlineOrders/$(incoming().requestId)).data.trackingToken == trackingToken;
+        allow update: if resource != null && isValidId(businessId) && isValidTrackingToken(trackingToken)
+          && !isRetail(businessId)
+          && hasModule(businessId, 'online_orders')
+          && hasTenantPerm(businessId, 'payments.receive')
+          && isValidPublicOrderTracker(incoming(), trackingToken)
+          && incoming().trackingToken == existing().trackingToken
+          && incoming().requestId == existing().requestId
+          && incoming().publicCode == existing().publicCode
+          && incoming().mode == existing().mode
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().version == existing().version + 1;
+        allow delete: if false;
       }
     }
   }

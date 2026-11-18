@@ -55,7 +55,13 @@ export async function createDemo(SQL,schema){
  async function direct(path,method='GET',body,user=principal){const req=new Request('https://demo.invalid'+path,{method,headers:{'Content-Type':'application/json',Origin:'https://demo.invalid'},body:body===undefined?undefined:JSON.stringify(body)});return await protectResponse(user,await api(req,{DB:db,BUCKET:bucket,PRINCIPAL:user}))}
  async function seedCall(path,method,body,user){const r=await direct(path,method,body,user);if(!r.ok)throw Error((await r.json()).error||'Falha ao preparar demonstração');return r.json()}
  const day=today(),stamp=new Date().toISOString();
- execute('INSERT INTO settings(id,name,mode,paper,updated_at,receipt_message,address,phone,legal_name,theme_color,logo_key,business_kind) VALUES(1,?,?,?,?,?,?,?,?,?,?,?)',[
+ const modules=isRetail?{tables:false,finance:true,inventory:true,costs:true,online_orders:false,delivery:false}:{tables:true,finance:true,inventory:true,costs:true,online_orders:true,delivery:true};
+ const deliveryAreas=isRetail?[]:[
+  {id:'centro',name:'Centro',fee_cents:500,min_order_cents:1500,estimated_minutes:30,active:true},
+  {id:'vila-nova',name:'Vila Nova',fee_cents:800,min_order_cents:2000,estimated_minutes:40,active:true},
+  {id:'jardim-sul',name:'Jardim Sul',fee_cents:1200,min_order_cents:3000,estimated_minutes:50,active:true}
+ ];
+ execute('INSERT INTO settings(id,name,mode,paper,updated_at,receipt_message,address,phone,legal_name,theme_color,logo_key,business_kind,modules_json,online_orders_enabled,pickup_enabled,pickup_message,delivery_enabled,delivery_min_order_cents,delivery_default_minutes,delivery_areas_json) VALUES(1,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',[
   businessName,
   'complete',
   80,
@@ -66,7 +72,15 @@ export async function createDemo(SQL,schema){
   isRetail?'Vila Mix Comércio Ltda':'Sabor da Vila · empresa fictícia',
   themeColor,
   isRetail?'demo-logo-retail':'demo-logo',
-  businessKind
+  businessKind,
+  JSON.stringify(modules),
+  isRetail?0:1,
+  isRetail?0:1,
+  isRetail?'':'Retire no balcão informando o código do pedido.',
+  isRetail?0:1,
+  isRetail?0:1500,
+  isRetail?45:40,
+  JSON.stringify(deliveryAreas)
  ]);
  images.set(isRetail?'demo-logo-retail':'demo-logo',isRetail?retailSvg('Vila Mix','#2563eb'):'/demo/assets/logo.svg');
  for(const person of activePeople)execute('INSERT INTO employees(id,name,username,role,permissions,active,created_at,updated_at) VALUES(?,?,?,?,?,1,?,?)',[person.id,person.name,person.username,person.role,'{}',stamp,stamp]);
@@ -121,7 +135,7 @@ export async function createDemo(SQL,schema){
    const image=crypto.randomUUID();
    images.set(image,'/demo/assets/'+asset+'.jpg');
    execute('INSERT INTO media(key,mime,size,created_by,created_at) VALUES(?,?,?,?,?)',[image,'image/jpeg',0,people[0].id,stamp]);
-   const p=await seedCall('/api/products','POST',{name,category,price_cents:price,cost_cents:cost,description,image_key:image,stock_mode:asset==='soda'?'unit':'none',initial_stock:0,minimum_stock:asset==='soda'?12:0,barcode:asset==='soda'?'7890000000001':null,sale_unit:asset==='soda'?'lata':'un',packaging:asset==='soda'?'350 ml':'',active:true,available:true,visible:true,options:asset==='juice'?[{label:'Açúcar',required:false,values:['Sem açúcar','Com açúcar']}]:[],addons:[],quick_notes:['Sem cebola','Para viagem']});
+   const p=await seedCall('/api/products','POST',{name,category,price_cents:price,cost_cents:cost,description,image_key:image,stock_mode:asset==='soda'?'unit':'none',initial_stock:0,minimum_stock:asset==='soda'?12:0,barcode:asset==='soda'?'7890000000001':null,sale_unit:asset==='soda'?'lata':'un',packaging:asset==='soda'?'350 ml':'',active:true,available:true,visible:true,options:asset==='juice'?[{label:'Açúcar',required:false,values:['Sem açúcar','Com açúcar']}]:[],addons:asset==='burger'?[{name:'Bacon crocante',price_cents:400,cost_cents:150},{name:'Queijo extra',price_cents:300,cost_cents:100}]:[],quick_notes:['Sem cebola','Para viagem']});
    products.push({...p,asset,name,price_cents:price,cost_cents:cost,image_key:image});
   }
   for(let n=1;n<=15;n++)await seedCall('/api/tables','POST',{number:n,seats:4});
@@ -139,6 +153,26 @@ export async function createDemo(SQL,schema){
   const soda=execute('SELECT finished_inventory_id id FROM products WHERE id=?',[products[8].id])[0].id;for(const [id,base] of [...ingredients.map(([id,,,,,qty])=>[id,qty]),[soda,6000]])execute("INSERT INTO inventory_moves(id,request_key,item_id,quantity_milli,kind,reason,actor_id,created_at) VALUES(?,?,?,?,'entry','Saldo inicial fictício',?,?)",[crypto.randomUUID(),crypto.randomUUID(),id,base+(used.get(id)||0),people[0].id,addDay(day,-30)+'T09:00:00.000Z']);
   execute('INSERT INTO suppliers(id,name,phone,notes,active,created_at,updated_at) VALUES(?,?,?,?,1,?,?)',['demo-supplier','Distribuidora Exemplo','','Fornecedor fictício',stamp,stamp]);
   for(const [number,actor,items] of [[3,people[2],[{product_id:products[0].id,quantity:2},{product_id:products[8].id,quantity:1}]],[7,people[3],[{product_id:products[2].id,quantity:2},{product_id:products[7].id,quantity:2}]]])await seedCall('/api/orders','POST',{request_key:crypto.randomUUID(),table_number:number,items},actor);
+  await seedCall('/api/online-orders','POST',{
+   request_key:'demo-seed-online-delivery-1',
+   mode:'delivery',
+   customer_name:'Camila Ferreira',
+   customer_phone:'(11) 98888-1122',
+   notes:'Tocar o interfone 12.',
+   payment_intent:'cash',
+   change_for_cents:5000,
+   delivery_address:{area_id:'centro',street:'Rua das Flores',number:'240',complement:'Ap 12',reference:'Próximo à praça'},
+   items:[{product_id:products[0].id,quantity:1,note:'Sem cebola'},{product_id:products[4].id,quantity:1}]
+  });
+  await seedCall('/api/online-orders','POST',{
+   request_key:'demo-seed-online-pickup-2',
+   mode:'pickup',
+   customer_name:'Lucas Oliveira',
+   customer_phone:'(11) 97777-3344',
+   notes:'Retiro em 15 minutos.',
+   payment_intent:'pix',
+   items:[{product_id:products[1].id,quantity:1},{product_id:products[7].id,quantity:1,selections:{'Açúcar':'Sem açúcar'}}]
+  });
   for(const p of [products[0],products[5],products[7]])await seedCall('/api/favorites','PUT',{product_id:p.id,favorite:true});
  }
 
@@ -149,5 +183,5 @@ export async function createDemo(SQL,schema){
    if(path==='/api/appearance'){if(principal.role!=='admin')return Response.json({error:'Somente o proprietário altera a identidade.'},{status:403});if(req.method==='GET')return Response.json(execute('SELECT logo_key,theme_color FROM settings WHERE id=1')[0]);const b=await req.json();if(!/^#[a-f0-9]{6}$/i.test(b.theme_color)||(b.logo_key!==null&&!images.has(b.logo_key)))return Response.json({error:'Confira a cor e a imagem.'},{status:400});execute('UPDATE settings SET logo_key=?,theme_color=? WHERE id=1',[b.logo_key,b.theme_color]);return Response.json({ok:true})}
    const r=path==='/api/media'||path.startsWith('/media/')?await media(req,env()):await protectResponse(principal,await api(req,env()));if(r.headers.get('Content-Type')?.includes('application/json'))return Response.json(decorate(await r.json()),{status:r.status});return r;
   }catch(e){return Response.json({error:e.status?e.message:String(e.message).includes('stock_qty_nonzero')?'Estoque insuficiente para esta simulação.':'Não foi possível concluir a simulação. Reinicie o exemplo se necessário.'},{status:e.status||409})}};const next=queue.then(run,run);queue=next.then(()=>{});return next}
- return {handle,images,day,async account(){const r=await direct('/api/session');const {user}=await r.json();return {business:{id:'demo-local',code:'demonstracao',name:execute('SELECT name FROM settings WHERE id=1')[0].name},user,platform:false,support:null,demo:true}},async setRole(role){const selected=activePeople.find(p=>p.role===role);if(!selected)throw Error('Perfil inválido');principal=selected;return this.account()},close(){for(const url of images.values())if(url.startsWith('blob:'))URL.revokeObjectURL(url);raw.close()}};
+ return {handle,images,day,async account(){const r=await direct('/api/session');const {user}=await r.json();return {business:{id:'demo-local',code:'demonstracao',name:execute('SELECT name FROM settings WHERE id=1')[0].name,business_kind:businessKind,modules},user,platform:false,support:null,demo:true}},async setRole(role){const selected=activePeople.find(p=>p.role===role);if(!selected)throw Error('Perfil inválido');principal=selected;return this.account()},close(){for(const url of images.values())if(url.startsWith('blob:'))URL.revokeObjectURL(url);raw.close()}};
 }

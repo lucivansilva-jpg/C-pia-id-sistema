@@ -286,3 +286,62 @@ ALTER TABLE products ADD COLUMN barcode TEXT;CREATE UNIQUE INDEX product_barcode
 CREATE TABLE customers(id TEXT PRIMARY KEY,name TEXT,phone TEXT,email TEXT,document TEXT,notes TEXT,active INTEGER,version INTEGER DEFAULT 1,created_at TEXT,updated_at TEXT);ALTER TABLE orders ADD COLUMN customer_id TEXT;ALTER TABLE orders ADD COLUMN customer_name TEXT DEFAULT '';ALTER TABLE orders ADD COLUMN exchange_from_order_id TEXT;
 CREATE TABLE product_import_rows(request_key TEXT PRIMARY KEY,fingerprint TEXT,actor_id TEXT,product_id TEXT,created_at TEXT);CREATE TABLE sale_returns(id TEXT PRIMARY KEY,request_key TEXT UNIQUE,fingerprint TEXT,order_id TEXT,kind TEXT,items TEXT,amount_cents INTEGER,restored_cost_cents INTEGER,unknown_cost_quantity INTEGER,original_closed_at TEXT,replacement_order_id TEXT,actor_id TEXT,reason TEXT,created_at TEXT);CREATE TABLE sale_return_lines(return_id TEXT,item_id TEXT,product_id TEXT,quantity INTEGER,refund_cents INTEGER,restocked INTEGER,unit_cost_cents INTEGER,inventory_id TEXT,PRIMARY KEY(return_id,item_id));
 CREATE TRIGGER refund_negative BEFORE INSERT ON ledger WHEN NEW.kind='refund' AND NEW.amount_cents>=0 BEGIN SELECT RAISE(ABORT,'refund_amount_negative'); END;
+ALTER TABLE settings ADD COLUMN modules_json TEXT;
+ALTER TABLE settings ADD COLUMN online_orders_enabled INTEGER DEFAULT 0 NOT NULL;
+ALTER TABLE settings ADD COLUMN pickup_enabled INTEGER DEFAULT 0 NOT NULL;
+ALTER TABLE settings ADD COLUMN pickup_message TEXT DEFAULT '' NOT NULL;
+ALTER TABLE settings ADD COLUMN delivery_enabled INTEGER DEFAULT 0 NOT NULL;
+ALTER TABLE settings ADD COLUMN delivery_min_order_cents INTEGER DEFAULT 0 NOT NULL;
+ALTER TABLE settings ADD COLUMN delivery_default_minutes INTEGER DEFAULT 45 NOT NULL;
+ALTER TABLE settings ADD COLUMN delivery_areas_json TEXT DEFAULT '[]' NOT NULL;
+ALTER TABLE orders ADD COLUMN order_mode TEXT DEFAULT 'in_store' NOT NULL;
+ALTER TABLE orders ADD COLUMN online_order_id TEXT;
+ALTER TABLE orders ADD COLUMN public_code TEXT;
+ALTER TABLE orders ADD COLUMN customer_phone TEXT DEFAULT '' NOT NULL;
+ALTER TABLE orders ADD COLUMN delivery_fee_cents INTEGER DEFAULT 0 NOT NULL;
+ALTER TABLE orders ADD COLUMN delivery_area_id TEXT;
+ALTER TABLE orders ADD COLUMN delivery_area_name TEXT DEFAULT '' NOT NULL;
+ALTER TABLE orders ADD COLUMN delivery_address_json TEXT;
+ALTER TABLE orders ADD COLUMN delivery_status TEXT;
+ALTER TABLE orders ADD COLUMN payment_intent TEXT;
+ALTER TABLE orders ADD COLUMN change_for_cents INTEGER;
+CREATE TABLE online_orders (
+	id TEXT PRIMARY KEY NOT NULL,
+	request_key TEXT NOT NULL,
+	tracking_token TEXT NOT NULL,
+	public_code TEXT NOT NULL,
+	mode TEXT NOT NULL,
+	table_number INTEGER,
+	status TEXT NOT NULL,
+	status_reason TEXT DEFAULT '' NOT NULL,
+	customer_name TEXT NOT NULL,
+	customer_phone TEXT NOT NULL,
+	notes TEXT DEFAULT '' NOT NULL,
+	items TEXT NOT NULL,
+	subtotal_cents INTEGER NOT NULL,
+	delivery_area_id TEXT,
+	delivery_area_name TEXT DEFAULT '' NOT NULL,
+	delivery_fee_cents INTEGER DEFAULT 0 NOT NULL,
+	delivery_address_json TEXT,
+	estimated_minutes INTEGER,
+	payment_intent TEXT NOT NULL,
+	change_for_cents INTEGER,
+	total_cents INTEGER NOT NULL,
+	paid_cents INTEGER DEFAULT 0 NOT NULL,
+	payment_status TEXT DEFAULT 'unpaid' NOT NULL,
+	converted_order_id TEXT,
+	converted_order_number INTEGER,
+	confirmed_by TEXT,
+	confirmed_at TEXT,
+	status_history_json TEXT DEFAULT '[]' NOT NULL,
+	version INTEGER DEFAULT 1 NOT NULL,
+	created_at TEXT NOT NULL,
+	updated_at TEXT NOT NULL
+);
+CREATE UNIQUE INDEX online_orders_request_key_unique ON online_orders (request_key);
+CREATE TABLE order_print_states (
+	order_id TEXT PRIMARY KEY NOT NULL,
+	printed_item_ids_json TEXT NOT NULL DEFAULT '[]',
+	print_version INTEGER NOT NULL DEFAULT 0,
+	updated_at TEXT NOT NULL
+);

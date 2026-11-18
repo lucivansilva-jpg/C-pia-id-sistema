@@ -177,6 +177,9 @@
     if ((path === '/api/finance/accounts' || /^\/api\/finance\/accounts\/[^/]+\/settle$/.test(path)) && method === 'POST') {
       return 'finance.manage';
     }
+    if (path === '/api/online-orders' || /^\/api\/online-orders\/[^/]+\/(confirm|reject|status|cancel)$/.test(path)) {
+      return 'payments.receive';
+    }
     return null;
   }
 
@@ -377,6 +380,98 @@
       .join('');
   }
 
+  function deliveryAreaDto(a) {
+    return {
+      id: clean(a?.id, 64),
+      name: clean(a?.name, 80),
+      fee_cents: num(a?.feeCents, 0, 10000000) ? a.feeCents : 0,
+      min_order_cents: a?.minOrderCents == null ? null : num(a.minOrderCents, 0, 100000000) ? a.minOrderCents : null,
+      estimated_minutes: a?.estimatedMinutes == null ? null : num(a.estimatedMinutes, 1, 300) ? a.estimatedMinutes : null,
+      active: a?.active !== false
+    };
+  }
+
+  function normalizeDeliveryAreasInput(areas) {
+    if (areas === undefined) return [];
+    if (!Array.isArray(areas) || areas.length > 50) {
+      fail(400, 'Informe até 50 áreas de entrega.');
+    }
+    const seenIds = new Set();
+    const seenNames = new Set();
+    return areas.map((a, idx) => {
+      if (!a || typeof a !== 'object') fail(400, 'Área de entrega inválida.');
+      const name = clean(a.name, 80);
+      if (name.length < 2) fail(400, 'Informe o nome da área de entrega com pelo menos 2 caracteres.');
+      const nameKey = name.toLocaleLowerCase('pt-BR');
+      if (seenNames.has(nameKey)) fail(400, 'Não repita o nome da área de entrega: ' + name + '.');
+      seenNames.add(nameKey);
+      const rawId = clean(a.id, 64).replace(/[^a-zA-Z0-9_-]/g, '');
+      const id = rawId || ('area_' + (idx + 1) + '_' + nameKey.replace(/[^a-z0-9]+/g, '_').slice(0, 24)).replace(/_+$/g, '');
+      if (!id || seenIds.has(id)) fail(400, 'Identificador da área de entrega inválido ou repetido.');
+      seenIds.add(id);
+      const feeCents = a.fee_cents ?? a.feeCents;
+      if (!num(feeCents, 0, 10000000)) fail(400, 'Taxa de entrega inválida para ' + name + '.');
+      const minOrder = a.min_order_cents ?? a.minOrderCents ?? null;
+      if (minOrder !== null && !num(minOrder, 0, 100000000)) fail(400, 'Pedido mínimo inválido para ' + name + '.');
+      const eta = a.estimated_minutes ?? a.estimatedMinutes ?? null;
+      if (eta !== null && !num(eta, 1, 300)) fail(400, 'Prazo estimado inválido para ' + name + '.');
+      return {
+        id,
+        name,
+        feeCents,
+        minOrderCents: minOrder,
+        estimatedMinutes: eta,
+        active: a.active !== false
+      };
+    });
+  }
+
+  function onlineOrderDto(r) {
+    return {
+      id: r.id,
+      request_key: r.requestKey,
+      tracking_token: r.trackingToken,
+      public_code: r.publicCode,
+      source: r.source || 'public_menu',
+      mode: r.mode,
+      table_number: r.tableNumber ?? null,
+      status: r.status,
+      status_reason: r.statusReason || '',
+      customer_name: r.customerName || '',
+      customer_phone: r.customerPhone || '',
+      notes: r.notes || '',
+      items: r.items || [],
+      subtotal_cents: r.subtotalCents || 0,
+      delivery_area_id: r.deliveryAreaId || null,
+      delivery_area_name: r.deliveryAreaName || '',
+      delivery_fee_cents: r.deliveryFeeCents || 0,
+      delivery_address: r.deliveryAddress
+        ? {
+            area_id: r.deliveryAddress.areaId,
+            area_name: r.deliveryAddress.areaName,
+            street: r.deliveryAddress.street,
+            number: r.deliveryAddress.number,
+            complement: r.deliveryAddress.complement || '',
+            reference: r.deliveryAddress.reference || ''
+          }
+        : null,
+      estimated_minutes: r.estimatedMinutes ?? null,
+      payment_intent: r.paymentIntent,
+      change_for_cents: r.changeForCents ?? null,
+      total_cents: r.totalCents || 0,
+      paid_cents: r.paidCents || 0,
+      payment_status: r.paymentStatus || 'unpaid',
+      converted_order_id: r.convertedOrderId || null,
+      converted_order_number: r.convertedOrderNumber ?? null,
+      confirmed_by: r.confirmedBy || null,
+      confirmed_at: tsToIso(r.confirmedAt),
+      status_history: r.statusHistory || [],
+      version: r.version || 1,
+      created_at: tsToIso(r.createdAt),
+      updated_at: tsToIso(r.updatedAt)
+    };
+  }
+
   function settingsDto(s, biz) {
     if (!s) {
       return {
@@ -393,9 +488,18 @@
         blind_close: false,
         logo_key: null,
         logo_url: null,
-        theme_color: '#6a330d'
+        theme_color: '#6a330d',
+        online_orders_enabled: false,
+        pickup_enabled: false,
+        pickup_message: '',
+        delivery_enabled: false,
+        delivery_min_order_cents: 0,
+        delivery_default_minutes: 45,
+        delivery_areas: []
       };
     }
+    const retail = s.businessKind === 'retail';
+    const mods = window.IDContract?.modules(s) || { online_orders: false, delivery: false };
     return {
       id: 1,
       name: s.name,
@@ -414,6 +518,13 @@
       logo_key: s.logoKey || null,
       logo_url: s.logoKey ? mediaCache.get(s.logoKey) || null : null,
       theme_color: s.themeColor || '#6a330d',
+      online_orders_enabled: !retail && mods.online_orders ? !!s.onlineOrdersEnabled : false,
+      pickup_enabled: !retail && mods.online_orders ? !!s.pickupEnabled : false,
+      pickup_message: s.pickupMessage || '',
+      delivery_enabled: !retail && mods.online_orders && mods.delivery ? !!s.deliveryEnabled : false,
+      delivery_min_order_cents: s.deliveryMinOrderCents ?? 0,
+      delivery_default_minutes: s.deliveryDefaultMinutes ?? 45,
+      delivery_areas: Array.isArray(s.deliveryAreas) ? s.deliveryAreas.map(deliveryAreaDto) : [],
       updated_at: tsToIso(s.updatedAt)
     };
   }
@@ -452,8 +563,8 @@
   }
 
   function orderDto(o, paidCents = null, refundCents = null) {
-    const paid = paidCents !== null ? paidCents : o.paidCents ?? 0;
     const refund = refundCents !== null ? refundCents : o.refundCents ?? 0;
+    const paid = paidCents !== null ? paidCents : Math.max(0, (o.paidCents ?? 0) - refund);
     return {
       id: o.id,
       number: o.number,
@@ -471,10 +582,31 @@
       attendant_name: o.attendantName || 'Administrador',
       customer_id: o.customerId || null,
       customer_name: o.customerName || '',
+      customer_phone: o.customerPhone || '',
       checkout_waiting: !!o.checkoutWaiting,
       checkout_held_at: tsToIso(o.checkoutHeldAt),
       checkout_held_by: o.checkoutHeldBy || null,
       exchange_from_order_id: o.exchangeFromOrderId || null,
+      order_mode: o.orderMode || (o.tableNumber != null ? 'table' : 'dine_in'),
+      online_order_id: o.onlineOrderId || null,
+      tracking_token: o.trackingToken || null,
+      public_code: o.publicCode || null,
+      delivery_fee_cents: o.deliveryFeeCents || 0,
+      delivery_area_id: o.deliveryAreaId || null,
+      delivery_area_name: o.deliveryAreaName || '',
+      delivery_address: o.deliveryAddress
+        ? {
+            area_id: o.deliveryAddress.areaId,
+            area_name: o.deliveryAddress.areaName,
+            street: o.deliveryAddress.street,
+            number: o.deliveryAddress.number,
+            complement: o.deliveryAddress.complement || '',
+            reference: o.deliveryAddress.reference || ''
+          }
+        : null,
+      delivery_status: o.deliveryStatus || null,
+      payment_intent: o.paymentIntent || null,
+      change_for_cents: o.changeForCents ?? null,
       paid_cents: paid,
       refund_cents: refund,
       balance_due_cents: o.state === 'open' ? Math.max(0, o.totalCents - paid) : 0,
@@ -936,14 +1068,19 @@
     let costKnown = 0;
     let missingCost = 0;
 
+    let deliveryFees = 0;
+
     for (const o of raw) {
       const items = o.items || [];
       const gross = items.reduce((t, i) => t + i.quantity * i.unit_price_cents, 0);
       const net = o.totalCents;
+      const fee = o.deliveryFeeCents || 0;
+      const itemsNet = Math.max(0, net - fee);
       revenue += net;
+      deliveryFees += fee;
       let assigned = 0;
       items.forEach((i, n) => {
-        const value = n === items.length - 1 ? net - assigned : Math.round((net * (i.quantity * i.unit_price_cents)) / (gross || 1));
+        const value = n === items.length - 1 ? itemsNet - assigned : Math.round((itemsNet * (i.quantity * i.unit_price_cents)) / (gross || 1));
         assigned += value;
         const p = products.get(i.product_id) || {
           id: i.product_id,
@@ -1010,6 +1147,7 @@
       summary: {
         orders: raw.length,
         revenue_cents: revenue,
+        delivery_fees_cents: deliveryFees,
         ticket_cents: raw.length ? Math.round(revenue / raw.length) : 0,
         known_cost_cents: reportModules.costs ? costKnown : null,
         missing_cost_quantity: missingCost,
@@ -1139,19 +1277,13 @@
     authorizeRoute(user, method, path);
 
     const currentSettings = await getSettings(businessId);
-    const contractMods=window.IDContract?.modules(currentSettings||{}) || {tables:true,finance:true,inventory:true,costs:true};
-    const requiredModule = /^\/api\/tables(?:\/|$)/.test(path)?'tables':/^\/api\/erp\/(accounts|finance|financial|reconcile|ledger)(?:\/|$)/.test(path)?'finance':/^\/api\/erp\/(inventory|stock|purchases|suppliers)(?:\/|$)/.test(path)?'inventory':/^\/api\/erp\/(recipes|costs)(?:\/|$)/.test(path)?'costs':null;
-    if(/^\/api\/finance(?:\/|$)/.test(path)&&!contractMods.finance)fail(403,'Financeiro completo não contratado.');
-    if(requiredModule&&!contractMods[requiredModule]){
-      if(path==='/api/tables'&&method==='GET')return json({tables:[]});
-      fail(403,'Este recurso não está contratado para o estabelecimento.');
-    }
-    const requiredPermission=routePermission(method,path);
-    if(requiredPermission && window.IDContract && !IDContract.allowed(currentSettings||{},requiredPermission))fail(403,'Módulo não contratado.');
     const isRetail = currentSettings?.businessKind === 'retail';
     if (isRetail) {
       if (user.role === 'waiter') fail(403, 'O perfil garçom não é utilizado no varejo. Peça ao administrador para ajustar seu perfil.');
       if (path === '/api/tables' && method === 'GET') return json({ tables: [] });
+      if (path.startsWith('/api/online-orders')) {
+        fail(403, 'Pedidos online e delivery estão disponíveis apenas na modalidade Alimentação.');
+      }
       if ((path === '/api/tables' && method !== 'GET') || (path === '/api/orders' && method === 'POST')) {
         fail(409, 'No varejo, use venda direta ou venda em espera. Mesas e comandas estão desativadas.');
       }
@@ -1165,6 +1297,15 @@
         fail(409, 'Fichas técnicas não estão disponíveis na modalidade Varejo.');
       }
     }
+    const contractMods=window.IDContract?.modules(currentSettings||{}) || {tables:true,finance:true,inventory:true,costs:true,online_orders:false,delivery:false};
+    const requiredModule = /^\/api\/tables(?:\/|$)/.test(path)?'tables':/^\/api\/online-orders(?:\/|$)/.test(path)?'online_orders':/^\/api\/erp\/(accounts|finance|financial|reconcile|ledger)(?:\/|$)/.test(path)?'finance':/^\/api\/erp\/(inventory|stock|purchases|suppliers)(?:\/|$)/.test(path)?'inventory':/^\/api\/erp\/(recipes|costs)(?:\/|$)/.test(path)?'costs':null;
+    if(/^\/api\/finance(?:\/|$)/.test(path)&&!contractMods.finance)fail(403,'Financeiro completo não contratado.');
+    if(requiredModule&&!contractMods[requiredModule]){
+      if(path==='/api/tables'&&method==='GET')return json({tables:[]});
+      fail(403,'Este recurso não está contratado para o estabelecimento.');
+    }
+    const requiredPermission=routePermission(method,path);
+    if(requiredPermission && window.IDContract && !IDContract.allowed(currentSettings||{},requiredPermission))fail(403,'Módulo não contratado.');
 
     // /api/session
     if (path === '/api/session' && method === 'GET') {
@@ -1235,15 +1376,61 @@
         if (!['essential', 'complete'].includes(body.mode) || ![58, 80].includes(body.paper)) {
           fail(400, 'Configuração inválida.');
         }
+
+        const allowOnline = !isRetail && contractMods.online_orders;
+        const allowDelivery = allowOnline && contractMods.delivery;
+        const hasOnlineField = ['online_orders_enabled', 'pickup_enabled', 'pickup_message'].some((k) => Object.hasOwn(body, k));
+        const hasDeliveryField = ['delivery_enabled', 'delivery_min_order_cents', 'delivery_default_minutes', 'delivery_areas'].some((k) => Object.hasOwn(body, k));
+        if (hasOnlineField && !allowOnline) fail(403, 'O módulo de pedidos online não está contratado para este estabelecimento.');
+        if (hasDeliveryField && !allowDelivery) fail(403, 'O módulo de delivery próprio não está contratado para este estabelecimento.');
+
+        const onlineOrdersEnabled = allowOnline
+          ? (Object.hasOwn(body, 'online_orders_enabled') ? !!body.online_orders_enabled : !!currentSettings?.onlineOrdersEnabled)
+          : false;
+        const pickupEnabled = allowOnline
+          ? (Object.hasOwn(body, 'pickup_enabled') ? !!body.pickup_enabled : !!currentSettings?.pickupEnabled)
+          : false;
+        const pickupMessage = allowOnline
+          ? (Object.hasOwn(body, 'pickup_message') ? clean(body.pickup_message, 300) : currentSettings?.pickupMessage || '')
+          : '';
+        const deliveryEnabled = allowDelivery
+          ? (Object.hasOwn(body, 'delivery_enabled') ? !!body.delivery_enabled : !!currentSettings?.deliveryEnabled)
+          : false;
+        const deliveryMinOrderCents = allowDelivery
+          ? (Object.hasOwn(body, 'delivery_min_order_cents') ? body.delivery_min_order_cents : currentSettings?.deliveryMinOrderCents ?? 0)
+          : 0;
+        if (allowDelivery && !num(deliveryMinOrderCents, 0, 100000000)) {
+          fail(400, 'Pedido mínimo para delivery inválido.');
+        }
+        const deliveryDefaultMinutes = allowDelivery
+          ? (Object.hasOwn(body, 'delivery_default_minutes') ? body.delivery_default_minutes : currentSettings?.deliveryDefaultMinutes ?? 45)
+          : 45;
+        if (allowDelivery && !num(deliveryDefaultMinutes, 1, 300)) {
+          fail(400, 'Prazo padrão de delivery inválido (entre 1 e 300 minutos).');
+        }
+        const deliveryAreas = allowDelivery
+          ? (Object.hasOwn(body, 'delivery_areas')
+              ? normalizeDeliveryAreasInput(body.delivery_areas)
+              : Array.isArray(currentSettings?.deliveryAreas)
+              ? currentSettings.deliveryAreas
+              : [])
+          : Array.isArray(currentSettings?.deliveryAreas)
+          ? currentSettings.deliveryAreas
+          : [];
+        if (deliveryEnabled && !deliveryAreas.some((a) => a.active !== false)) {
+          fail(400, 'Cadastre e ative pelo menos uma área de entrega antes de ativar o delivery.');
+        }
+
         const batch = writeBatch(db);
         const nextLogo = currentSettings?.logoKey || null;
         const themeColor = currentSettings?.themeColor || '#6a330d';
+        const kind = isRetail ? 'retail' : 'food';
         batch.set(doc(db, 'businesses', businessId, 'settings', 'main'), {
           ...currentSettings,
           name,
           mode: body.mode,
           paper: body.paper,
-          businessKind: currentSettings?.businessKind === 'retail' ? 'retail' : 'food',
+          businessKind: kind,
           legalName: clean(body.legal_name, 150),
           cnpj,
           address: clean(body.address, 300),
@@ -1252,6 +1439,13 @@
           blindClose: !!body.blind_close,
           logoKey: nextLogo,
           themeColor,
+          onlineOrdersEnabled,
+          pickupEnabled,
+          pickupMessage,
+          deliveryEnabled,
+          deliveryMinOrderCents,
+          deliveryDefaultMinutes,
+          deliveryAreas,
           updatedAt: serverTimestamp()
         });
         batch.set(doc(db, 'businesses', businessId, 'publicSettings', 'menu'), {
@@ -1260,6 +1454,14 @@
           phone: clean(body.phone, 30),
           logoDataUrl: nextLogo ? await resolveMediaUrl(businessId, nextLogo) : null,
           themeColor,
+          businessKind: kind,
+          onlineOrdersEnabled,
+          pickupEnabled: onlineOrdersEnabled ? pickupEnabled : false,
+          pickupMessage: onlineOrdersEnabled ? pickupMessage : '',
+          deliveryEnabled: onlineOrdersEnabled && allowDelivery ? deliveryEnabled : false,
+          deliveryMinOrderCents,
+          deliveryDefaultMinutes,
+          deliveryAreas: onlineOrdersEnabled && allowDelivery ? deliveryAreas.filter((a) => a.active !== false) : [],
           active: true,
           updatedAt: serverTimestamp()
         });
@@ -1294,6 +1496,13 @@
         receiptMessage: 'Obrigado pela preferência! Volte sempre.',
         blindClose: false
       };
+      const allowOnline = !isRetail && contractMods.online_orders;
+      const allowDelivery = allowOnline && contractMods.delivery;
+      const onlineOrdersEnabled = allowOnline ? !!base.onlineOrdersEnabled : false;
+      const pickupEnabled = onlineOrdersEnabled ? !!base.pickupEnabled : false;
+      const pickupMessage = onlineOrdersEnabled ? clean(base.pickupMessage || '', 300) : '';
+      const deliveryEnabled = onlineOrdersEnabled && allowDelivery ? !!base.deliveryEnabled : false;
+      const deliveryAreas = Array.isArray(base.deliveryAreas) ? base.deliveryAreas : [];
       batch.set(doc(db, 'businesses', businessId, 'settings', 'main'), {
         ...base,
         logoKey,
@@ -1306,6 +1515,14 @@
         phone: base.phone || '',
         logoDataUrl: logoDataUrl || null,
         themeColor,
+        businessKind: isRetail ? 'retail' : 'food',
+        onlineOrdersEnabled,
+        pickupEnabled,
+        pickupMessage,
+        deliveryEnabled,
+        deliveryMinOrderCents: base.deliveryMinOrderCents ?? 0,
+        deliveryDefaultMinutes: base.deliveryDefaultMinutes ?? 45,
+        deliveryAreas: deliveryEnabled || allowDelivery ? deliveryAreas.filter((a) => a.active !== false) : [],
         active: true,
         updatedAt: serverTimestamp()
       });
@@ -3534,20 +3751,38 @@
         }
 
         if (task === 'delivery') {
+          if (rawOrder.onlineOrderId && !hasPermission(user, 'payments.receive')) {
+            fail(403, 'Apenas o caixa ou administrador pode atualizar entregas de pedidos online.');
+          }
           await runTransaction(db, async (tx) => {
-            const [snap, tableLockSnap] = await Promise.all([
+            const reqRef = rawOrder.onlineOrderId ? doc(db, 'businesses', businessId, 'onlineOrders', rawOrder.onlineOrderId) : null;
+            const trRef = rawOrder.trackingToken ? doc(db, 'businesses', businessId, 'publicOrderTrackers', rawOrder.trackingToken) : null;
+            const [snap, tableLockSnap, reqSnap, trSnap] = await Promise.all([
               tx.get(ordRef),
-              tableLockRef ? tx.get(tableLockRef) : Promise.resolve(null)
+              tableLockRef ? tx.get(tableLockRef) : Promise.resolve(null),
+              reqRef ? tx.get(reqRef) : Promise.resolve(null),
+              trRef ? tx.get(trRef) : Promise.resolve(null)
             ]);
             if (!snap.exists()) fail(404, 'Comanda não encontrada.');
             const ord = snap.data();
             if (ord.state === 'cancelled') fail(409, 'Comanda cancelada.');
-            if (ord.fulfillment !== 'delivered') {
+            if (ord.fulfillment !== 'delivered' || (ord.onlineOrderId && ord.deliveryStatus !== 'delivered')) {
               tx.update(ordRef, {
                 fulfillment: 'delivered',
+                ...(ord.onlineOrderId ? { deliveryStatus: 'delivered' } : {}),
                 version: (ord.version || 1) + 1,
                 updatedAt: serverTimestamp()
               });
+            }
+            if (reqSnap?.exists() && !['delivered', 'rejected', 'cancelled'].includes(reqSnap.data().status)) {
+              const rData = reqSnap.data();
+              const nextVer = (rData.version || 1) + 1;
+              const entry = { status: 'delivered', at: nowIso(), actorName: user.name || 'Caixa' };
+              const nextHistory = [...(rData.statusHistory || []), entry].slice(-20);
+              tx.update(reqRef, { status: 'delivered', statusHistory: nextHistory, version: nextVer, updatedAt: serverTimestamp() });
+              if (trSnap?.exists()) {
+                tx.update(trRef, { status: 'delivered', statusHistory: nextHistory, version: nextVer, updatedAt: serverTimestamp() });
+              }
             }
             if (
               ord.state === 'closed' &&
@@ -3570,12 +3805,17 @@
         }
 
         if (task === 'cancel') {
-          if (!clean(body.reason, 200)) fail(400, 'Informe o motivo do cancelamento.');
+          const reason = clean(body.reason, 200);
+          if (!reason) fail(400, 'Informe o motivo do cancelamento.');
           const legacyPaid = typeof rawOrder.paidCents !== 'number' ? (await orderLedgerSummary(businessId, id)).paid : null;
           await runTransaction(db, async (tx) => {
-            const [snap, tableLockSnap] = await Promise.all([
+            const reqRef = rawOrder.onlineOrderId ? doc(db, 'businesses', businessId, 'onlineOrders', rawOrder.onlineOrderId) : null;
+            const trRef = rawOrder.trackingToken ? doc(db, 'businesses', businessId, 'publicOrderTrackers', rawOrder.trackingToken) : null;
+            const [snap, tableLockSnap, reqSnap, trSnap] = await Promise.all([
               tx.get(ordRef),
-              tableLockRef ? tx.get(tableLockRef) : Promise.resolve(null)
+              tableLockRef ? tx.get(tableLockRef) : Promise.resolve(null),
+              reqRef ? tx.get(reqRef) : Promise.resolve(null),
+              trRef ? tx.get(trRef) : Promise.resolve(null)
             ]);
             if (!snap.exists()) fail(404, 'Comanda não encontrada.');
             const ord = snap.data();
@@ -3584,13 +3824,26 @@
             if (ord.state !== 'open' || paid !== 0) {
               fail(409, 'Somente comandas abertas e sem recebimentos podem ser canceladas nesta versão.');
             }
+            const restoreInv = ord.onlineOrderId ? await prepareInventoryRestoration(tx, businessId, ord.items || [], id, reason, user) : null;
             tx.update(ordRef, {
               state: 'cancelled',
               fulfillment: 'delivered',
+              ...(ord.onlineOrderId ? { deliveryStatus: 'cancelled' } : {}),
               authorizedBy: user.id,
               version: (ord.version || 1) + 1,
               updatedAt: serverTimestamp()
             });
+            if (restoreInv) restoreInv();
+            if (reqSnap?.exists() && !['delivered', 'rejected', 'cancelled'].includes(reqSnap.data().status)) {
+              const rData = reqSnap.data();
+              const nextVer = (rData.version || 1) + 1;
+              const entry = { status: 'cancelled', reason, at: nowIso(), actorName: user.name || 'Caixa' };
+              const nextHistory = [...(rData.statusHistory || []), entry].slice(-20);
+              tx.update(reqRef, { status: 'cancelled', statusReason: reason, statusHistory: nextHistory, version: nextVer, updatedAt: serverTimestamp() });
+              if (trSnap?.exists()) {
+                tx.update(trRef, { status: 'cancelled', statusReason: reason, statusHistory: nextHistory, version: nextVer, updatedAt: serverTimestamp() });
+              }
+            }
             if (
               tableLockSnap &&
               tableLockSnap.exists() &&
@@ -4282,10 +4535,20 @@
 
     // /api/finance
     if (path === '/api/finance' && method === 'GET') {
-      const [accSnap, ledSnap, ordSnap] = await Promise.all([
+      const includeOnlineAwaiting = !isRetail && contractMods.online_orders && hasPermission(user, 'payments.receive');
+      const [accSnap, ledSnap, ordSnap, onlineAwaitSnap] = await Promise.all([
         getDocs(query(collection(db, 'businesses', businessId, 'accounts'), orderBy('dueDate'), limit(300))),
         getDocs(query(collection(db, 'businesses', businessId, 'ledger'), orderBy('createdAt', 'desc'), limit(500))),
-        getDocs(query(collection(db, 'businesses', businessId, 'orders'), where('state', '==', 'open'), limit(500)))
+        getDocs(query(collection(db, 'businesses', businessId, 'orders'), where('state', '==', 'open'), limit(500))),
+        includeOnlineAwaiting
+          ? getDocs(
+              query(
+                collection(db, 'businesses', businessId, 'onlineOrders'),
+                where('status', '==', 'awaiting_confirmation'),
+                limit(200)
+              )
+            ).catch(() => null)
+          : Promise.resolve(null)
       ]).catch((err) => handleFirestoreError(err, OperationType.LIST, `businesses/${businessId}/accounts`));
 
       const accounts = accSnap.docs
@@ -4320,12 +4583,23 @@
         .filter((o) => o.state === 'open')
         .reduce((s, o) => s + Math.max(0, o.totalCents - (typeof o.paidCents === 'number' ? o.paidCents : paidByOrder.get(o.id) || 0)), 0);
 
+      const awaitingDocs = onlineAwaitSnap
+        ? onlineAwaitSnap.docs.map((d) => d.data()).filter((r) => r.status === 'awaiting_confirmation')
+        : [];
+      const onlineAwaitingSummary = includeOnlineAwaiting
+        ? {
+            count: awaitingDocs.length,
+            amount_cents: awaitingDocs.reduce((s, r) => s + (r.totalCents || 0), 0)
+          }
+        : null;
+
       return json({
         accounts,
         ledger: led.slice(0, 300).map(ledgerDto),
         summary: { sales_cents: salesCents, expenses_cents: expensesCents },
         pending: { payable_cents: payableCents, receivable_cents: receivableCents },
-        open_orders_due: { amount_cents: openOrdersDue }
+        open_orders_due: { amount_cents: openOrdersDue },
+        ...(onlineAwaitingSummary ? { online_awaiting_summary: onlineAwaitingSummary } : {})
       });
     }
 
@@ -4516,6 +4790,555 @@
         handleFirestoreError(err, OperationType.WRITE, aRef.path);
       });
       return json({ ok: true });
+    }
+
+    // /api/online-orders
+    if (path === '/api/online-orders' && method === 'GET') {
+      const snap = await getDocs(
+        query(collection(db, 'businesses', businessId, 'onlineOrders'), orderBy('createdAt', 'desc'), limit(200))
+      ).catch((err) => handleFirestoreError(err, OperationType.LIST, `businesses/${businessId}/onlineOrders`));
+      const rawReqs = snap.docs
+        .map((d) => d.data())
+        .sort((a, b) => new Date(tsToIso(b.createdAt) || 0) - new Date(tsToIso(a.createdAt) || 0));
+      const linkedIds = [...new Set(rawReqs.map((r) => r.convertedOrderId).filter(Boolean))];
+      const linkedOrders = new Map();
+      if (linkedIds.length) {
+        const ordSnaps = await Promise.all(
+          linkedIds.slice(0, 200).map((oid) => getDoc(doc(db, 'businesses', businessId, 'orders', oid)).catch(() => null))
+        );
+        ordSnaps.forEach((os) => {
+          if (os && os.exists()) linkedOrders.set(os.id, os.data());
+        });
+      }
+      const requests = rawReqs.map((r) => {
+        const dto = onlineOrderDto(r);
+        const ord = r.convertedOrderId ? linkedOrders.get(r.convertedOrderId) : null;
+        if (!ord) return dto;
+        const grossPaid = typeof ord.paidCents === 'number' ? ord.paidCents : 0;
+        const refundCents = typeof ord.refundCents === 'number' ? ord.refundCents : 0;
+        const netPaid = Math.max(0, grossPaid - refundCents);
+        dto.order_state = ord.state;
+        dto.fulfillment = ord.fulfillment || null;
+        dto.refund_cents = refundCents;
+        if (ord.onlineOrderId === r.id) {
+          dto.items = ord.items || dto.items;
+          dto.subtotal_cents = Array.isArray(ord.items)
+            ? ord.items.reduce((sum, item) => sum + item.quantity * item.unit_price_cents, 0)
+            : dto.subtotal_cents;
+          dto.delivery_fee_cents = ord.deliveryFeeCents ?? dto.delivery_fee_cents;
+          dto.total_cents = ord.totalCents ?? dto.total_cents;
+          dto.paid_cents = netPaid;
+          dto.payment_status =
+            refundCents > 0 && netPaid === 0
+              ? 'refunded'
+              : netPaid >= dto.total_cents && dto.total_cents > 0
+                ? 'paid'
+                : netPaid > 0
+                  ? 'partial'
+                  : 'unpaid';
+          if (ord.state === 'cancelled') {
+            dto.status = 'cancelled';
+          } else if (ord.deliveryStatus && !['delivered', 'cancelled', 'rejected'].includes(dto.status)) {
+            dto.status = ord.deliveryStatus;
+          } else if (ord.fulfillment === 'delivered' && !['delivered', 'cancelled', 'rejected'].includes(dto.status)) {
+            dto.status = 'delivered';
+          }
+        } else {
+          const ordPaid = ord.state === 'closed' && netPaid >= ord.totalCents ? dto.total_cents : Math.min(dto.total_cents, netPaid);
+          dto.paid_cents = ordPaid;
+          dto.payment_status =
+            refundCents > 0 && netPaid === 0
+              ? 'refunded'
+              : ordPaid >= dto.total_cents && dto.total_cents > 0
+                ? 'paid'
+                : ordPaid > 0
+                  ? 'partial'
+                  : 'unpaid';
+          if (ord.state === 'cancelled' && !['delivered', 'cancelled', 'rejected'].includes(dto.status)) {
+            dto.status = 'cancelled';
+          }
+        }
+        return dto;
+      });
+      const activeStatuses = new Set(['awaiting_confirmation', 'confirmed', 'preparing', 'ready_for_pickup', 'out_for_delivery']);
+      const awaiting = requests.filter((r) => r.status === 'awaiting_confirmation');
+      const active = requests.filter((r) => activeStatuses.has(r.status));
+      const inTransitOrPickup = requests.filter((r) => ['confirmed', 'preparing', 'ready_for_pickup', 'out_for_delivery'].includes(r.status));
+      const summary = {
+        awaiting_count: awaiting.length,
+        active_count: active.length,
+        fulfillment_count: inTransitOrPickup.length,
+        predicted_total_cents: active.reduce((s, r) => s + Math.max(0, (r.total_cents || 0) - (r.paid_cents || 0)), 0),
+        predicted_delivery_fees_cents: active
+          .filter((r) => (r.paid_cents || 0) < (r.total_cents || 0))
+          .reduce((s, r) => s + (r.delivery_fee_cents || 0), 0)
+      };
+      return json({ requests, summary, settings: settingsDto(currentSettings, account.business) });
+    }
+
+    const onlineMatch = path.match(/^\/api\/online-orders\/([^/]+)\/(confirm|reject|status|cancel)$/);
+    if (onlineMatch && method === 'POST') {
+      const reqId = onlineMatch[1];
+      const action = onlineMatch[2];
+      const reqRef = doc(db, 'businesses', businessId, 'onlineOrders', reqId);
+
+      if (action === 'confirm') {
+        const preSnap = await getDoc(reqRef).catch((err) => handleFirestoreError(err, OperationType.GET, reqRef.path));
+        if (!preSnap.exists()) fail(404, 'Pedido online não encontrado.');
+        const preReq = preSnap.data();
+        if (preReq.status === 'confirmed' && preReq.convertedOrderId) {
+          return json({
+            ok: true,
+            id: preReq.convertedOrderId,
+            number: preReq.convertedOrderNumber,
+            already_confirmed: true
+          });
+        }
+        if (preReq.status !== 'awaiting_confirmation') {
+          fail(409, 'Este pedido não está mais aguardando confirmação.');
+        }
+        if (preReq.mode === 'delivery' && (!contractMods.delivery || !currentSettings?.deliveryEnabled)) {
+          fail(409, 'O delivery próprio está desativado para este estabelecimento.');
+        }
+        if (preReq.mode === 'pickup' && !currentSettings?.pickupEnabled) {
+          fail(409, 'A retirada no estabelecimento está desativada no momento.');
+        }
+
+        const prodMap = await loadProductsByIds(
+          businessId,
+          (preReq.items || []).map((i) => i.product_id),
+          user
+        );
+        const pricedItems = [];
+        let subtotal = 0;
+        for (const item of preReq.items || []) {
+          if (typeof item.product_id !== 'string' || !num(item.quantity, 1, 999)) {
+            fail(400, 'Item do pedido online inválido.');
+          }
+          const p = prodMap.get(item.product_id);
+          if (!p || !p.active || !p.available || !p.visible) {
+            fail(409, `O produto "${item.name || 'selecionado'}" ficou indisponível no catálogo.`);
+          }
+          let priced;
+          try {
+            priced = priceItem(p, item, user);
+          } catch (err) {
+            fail(409, 'Opções ou adicionais mudaram no cadastro: ' + err.message);
+          }
+          if (priced.unit_price_cents !== item.unit_price_cents) {
+            fail(409, `O preço de "${p.name}" mudou após a solicitação. Recuse e solicite um novo pedido.`);
+          }
+          pricedItems.push(priced);
+          subtotal += priced.unit_price_cents * priced.quantity;
+        }
+        if (subtotal !== preReq.subtotalCents) {
+          fail(409, 'O subtotal do pedido não confere com o catálogo atual.');
+        }
+
+        let matchedArea = null;
+        let deliveryFeeCents = 0;
+        let estimatedMinutes = preReq.estimatedMinutes ?? null;
+        if (preReq.mode === 'delivery') {
+          const areas = Array.isArray(currentSettings?.deliveryAreas) ? currentSettings.deliveryAreas : [];
+          matchedArea = areas.find((a) => a.id === preReq.deliveryAreaId && a.active !== false) || null;
+          if (!matchedArea) {
+            fail(409, 'Área de entrega não atendida ou desativada nas configurações.');
+          }
+          if (matchedArea.feeCents !== preReq.deliveryFeeCents) {
+            fail(409, 'A taxa de entrega da área foi alterada. Recuse o pedido ou ajuste antes de confirmar.');
+          }
+          deliveryFeeCents = matchedArea.feeCents;
+          const minOrder = Math.max(currentSettings?.deliveryMinOrderCents || 0, matchedArea.minOrderCents || 0);
+          if (subtotal < minOrder) {
+            fail(409, 'O pedido está abaixo do valor mínimo configurado para entrega.');
+          }
+          estimatedMinutes = matchedArea.estimatedMinutes ?? currentSettings?.deliveryDefaultMinutes ?? estimatedMinutes ?? 45;
+        } else if (preReq.mode === 'pickup') {
+          estimatedMinutes = estimatedMinutes ?? 20;
+        }
+
+        let tableValidated = false;
+        if (preReq.mode === 'table' && contractMods.tables && preReq.tableNumber != null) {
+          const tblSnap = await getDocs(
+            query(collection(db, 'businesses', businessId, 'tables'), where('number', '==', preReq.tableNumber), limit(1))
+          ).catch((err) => handleFirestoreError(err, OperationType.LIST, `businesses/${businessId}/tables`));
+          if (!tblSnap.empty && tblSnap.docs[0].data().active) {
+            tableValidated = true;
+          }
+        }
+
+        const newOrderId = crypto.randomUUID();
+        const tableLockRef = tableValidated ? tableLockDocRef(businessId, preReq.tableNumber) : null;
+        const trackerRef = doc(db, 'businesses', businessId, 'publicOrderTrackers', preReq.trackingToken);
+        const settingsRef = doc(db, 'businesses', businessId, 'settings', 'main');
+        let resultPayload = null;
+
+        await runTransaction(db, async (tx) => {
+          const [reqSnap, trSnap, sSnap, tableLockSnap] = await Promise.all([
+            tx.get(reqRef),
+            tx.get(trackerRef),
+            tx.get(settingsRef),
+            tableLockRef ? tx.get(tableLockRef) : Promise.resolve(null)
+          ]);
+          if (!reqSnap.exists()) fail(404, 'Pedido online não encontrado.');
+          const req = reqSnap.data();
+          if (req.status === 'confirmed' && req.convertedOrderId) {
+            resultPayload = { ok: true, id: req.convertedOrderId, number: req.convertedOrderNumber, already_confirmed: true };
+            return;
+          }
+          if (req.status !== 'awaiting_confirmation') fail(409, 'Este pedido não está mais aguardando confirmação.');
+
+          const freshSettings = sSnap.exists() ? sSnap.data() : currentSettings;
+          if (req.mode === 'delivery') {
+            const freshArea = (freshSettings?.deliveryAreas || []).find((a) => a.id === req.deliveryAreaId && a.active !== false);
+            if (!freshArea || freshArea.feeCents !== deliveryFeeCents) {
+              fail(409, 'A taxa ou disponibilidade da área de entrega mudou. Atualize e confira.');
+            }
+          }
+
+          const existingOpenId = tableLockSnap?.exists() && tableLockSnap.data().active ? tableLockSnap.data().resourceId : null;
+          const existingOrdSnap = existingOpenId ? await tx.get(doc(db, 'businesses', businessId, 'orders', existingOpenId)) : null;
+          const appendExisting = !!(existingOrdSnap && existingOrdSnap.exists() && existingOrdSnap.data().state === 'open');
+          if (appendExisting) {
+            const exOrd = existingOrdSnap.data();
+            if ((exOrd.discountCents || 0) > 0 || (exOrd.items || []).length + pricedItems.length > 100) {
+              fail(409, 'A comanda atual da mesa possui desconto ou atingiu o limite de itens. Confira no caixa.');
+            }
+          }
+
+          const counterOp = appendExisting ? null : await prepareCounter(tx, businessId, 'orders');
+          const applyInventory = await prepareInventoryDeduction(tx, businessId, pricedItems, newOrderId, user);
+
+          let finalOrderId = newOrderId;
+          let finalOrderNumber = counterOp ? counterOp.value : null;
+
+          if (appendExisting) {
+            const exOrd = existingOrdSnap.data();
+            finalOrderId = exOrd.id;
+            finalOrderNumber = exOrd.number;
+            tx.update(existingOrdSnap.ref, {
+              items: [...(exOrd.items || []), ...pricedItems],
+              totalCents: exOrd.totalCents + subtotal,
+              fulfillment: 'pending',
+              version: (exOrd.version || 1) + 1,
+              updatedAt: serverTimestamp()
+            });
+          } else {
+            counterOp.apply();
+            const orderTotal = subtotal + deliveryFeeCents;
+            const orderRequestKey = ('online_' + req.id).slice(0, 80);
+            const tableNum = tableValidated ? req.tableNumber : null;
+            tx.set(doc(db, 'businesses', businessId, 'orders', finalOrderId), {
+              id: finalOrderId,
+              number: finalOrderNumber,
+              requestKey: orderRequestKey,
+              tableNumber: tableNum,
+              state: 'open',
+              fulfillment: 'pending',
+              items: pricedItems,
+              totalCents: orderTotal,
+              discountCents: 0,
+              paidCents: 0,
+              refundCents: 0,
+              actorId: user.id,
+              attendantName: user.name || 'Caixa',
+              customerId: null,
+              customerName: req.customerName || '',
+              customerPhone: req.customerPhone || '',
+              checkoutWaiting: false,
+              orderMode: req.mode,
+              onlineOrderId: req.id,
+              trackingToken: req.trackingToken,
+              publicCode: req.publicCode,
+              deliveryFeeCents,
+              deliveryAreaId: req.deliveryAreaId ?? null,
+              deliveryAreaName: req.deliveryAreaName ?? null,
+              deliveryAddress: req.deliveryAddress ?? null,
+              deliveryStatus: 'confirmed',
+              paymentIntent: req.paymentIntent,
+              changeForCents: req.changeForCents ?? null,
+              version: 1,
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            });
+            if (tableLockRef && tableNum != null) {
+              const nextLockVer = tableLockSnap?.exists() ? (tableLockSnap.data().version || 1) + 1 : 1;
+              const lockPayload = {
+                id: 'table_' + tableNum,
+                kind: 'table',
+                resourceId: finalOrderId,
+                active: true,
+                ownerId: user.id,
+                orderNumber: finalOrderNumber,
+                attendantName: user.name || 'Caixa',
+                version: nextLockVer,
+                updatedAt: serverTimestamp()
+              };
+              if (tableLockSnap?.exists()) tx.update(tableLockRef, lockPayload);
+              else tx.set(tableLockRef, lockPayload);
+            }
+          }
+
+          applyInventory();
+
+          const nextVer = (req.version || 1) + 1;
+          const entry = { status: 'confirmed', at: nowIso(), actorName: user.name || 'Caixa' };
+          const nextHistory = [...(req.statusHistory || []), entry].slice(-20);
+          tx.update(reqRef, {
+            status: 'confirmed',
+            convertedOrderId: finalOrderId,
+            convertedOrderNumber: finalOrderNumber,
+            confirmedBy: user.id,
+            confirmedAt: serverTimestamp(),
+            estimatedMinutes: estimatedMinutes ?? null,
+            statusHistory: nextHistory,
+            version: nextVer,
+            updatedAt: serverTimestamp()
+          });
+          if (trSnap.exists()) {
+            tx.update(trackerRef, {
+              status: 'confirmed',
+              estimatedMinutes: estimatedMinutes ?? null,
+              pickupMessage: req.mode === 'pickup' ? clean(freshSettings?.pickupMessage || '', 300) || null : null,
+              statusHistory: nextHistory,
+              version: nextVer,
+              updatedAt: serverTimestamp()
+            });
+          }
+          const auditId = crypto.randomUUID();
+          tx.set(doc(db, 'businesses', businessId, 'auditLogs', auditId), {
+            id: auditId,
+            actorId: auth.currentUser.uid,
+            action: 'online_order.confirm',
+            entityId: req.id,
+            createdAt: serverTimestamp()
+          });
+          resultPayload = { ok: true, id: finalOrderId, number: finalOrderNumber, appended: appendExisting };
+        }).catch((err) => {
+          if (err instanceof HttpError) throw err;
+          handleFirestoreError(err, OperationType.WRITE, reqRef.path);
+        });
+
+        return json(resultPayload, resultPayload?.already_confirmed ? 200 : 201);
+      }
+
+      if (action === 'reject') {
+        const reason = clean(body.reason, 200);
+        if (reason.length < 3) fail(400, 'Informe o motivo da recusa (mínimo 3 caracteres).');
+        await runTransaction(db, async (tx) => {
+          const reqSnap = await tx.get(reqRef);
+          if (!reqSnap.exists()) fail(404, 'Pedido online não encontrado.');
+          const req = reqSnap.data();
+          const trRef = doc(db, 'businesses', businessId, 'publicOrderTrackers', req.trackingToken);
+          const trSnap = await tx.get(trRef);
+          if (req.status === 'rejected') return;
+          if (req.status !== 'awaiting_confirmation') fail(409, 'Somente pedidos aguardando confirmação podem ser recusados.');
+          const nextVer = (req.version || 1) + 1;
+          const entry = { status: 'rejected', reason, at: nowIso(), actorName: user.name || 'Caixa' };
+          const nextHistory = [...(req.statusHistory || []), entry].slice(-20);
+          tx.update(reqRef, {
+            status: 'rejected',
+            statusReason: reason,
+            statusHistory: nextHistory,
+            version: nextVer,
+            updatedAt: serverTimestamp()
+          });
+          if (trSnap.exists()) {
+            tx.update(trRef, {
+              status: 'rejected',
+              statusReason: reason,
+              statusHistory: nextHistory,
+              version: nextVer,
+              updatedAt: serverTimestamp()
+            });
+          }
+          const auditId = crypto.randomUUID();
+          tx.set(doc(db, 'businesses', businessId, 'auditLogs', auditId), {
+            id: auditId,
+            actorId: auth.currentUser.uid,
+            action: 'online_order.reject: ' + clean(reason, 170),
+            entityId: req.id,
+            createdAt: serverTimestamp()
+          });
+        }).catch((err) => {
+          if (err instanceof HttpError) throw err;
+          handleFirestoreError(err, OperationType.UPDATE, reqRef.path);
+        });
+        return json({ ok: true });
+      }
+
+      if (action === 'status') {
+        const nextStatus = clean(body.status, 40);
+        const allowedTargets = {
+          confirmed: ['preparing', 'ready_for_pickup', 'out_for_delivery', 'delivered'],
+          preparing: ['ready_for_pickup', 'out_for_delivery', 'delivered'],
+          ready_for_pickup: ['delivered'],
+          out_for_delivery: ['delivered']
+        };
+        await runTransaction(db, async (tx) => {
+          const reqSnap = await tx.get(reqRef);
+          if (!reqSnap.exists()) fail(404, 'Pedido online não encontrado.');
+          const req = reqSnap.data();
+          const trRef = doc(db, 'businesses', businessId, 'publicOrderTrackers', req.trackingToken);
+          const ordRef = req.convertedOrderId ? doc(db, 'businesses', businessId, 'orders', req.convertedOrderId) : null;
+          const [trSnap, ordSnap] = await Promise.all([
+            tx.get(trRef),
+            ordRef ? tx.get(ordRef) : Promise.resolve(null)
+          ]);
+          const ord = ordSnap?.exists() ? ordSnap.data() : null;
+          const tableLockRef = ord?.tableNumber != null ? tableLockDocRef(businessId, ord.tableNumber) : null;
+          const tableLockSnap = tableLockRef ? await tx.get(tableLockRef) : null;
+
+          if (req.status === nextStatus) return;
+          if (!allowedTargets[req.status]?.includes(nextStatus)) {
+            fail(409, 'Transição de status inválida para este pedido.');
+          }
+          if (nextStatus === 'ready_for_pickup' && req.mode === 'delivery') {
+            fail(400, 'Use Saiu para entrega para pedidos de delivery.');
+          }
+          if (nextStatus === 'out_for_delivery' && req.mode !== 'delivery') {
+            fail(400, 'Use Pronto para retirada ou entregue para este tipo de pedido.');
+          }
+          const nextVer = (req.version || 1) + 1;
+          const entry = { status: nextStatus, at: nowIso(), actorName: user.name || 'Caixa' };
+          const nextHistory = [...(req.statusHistory || []), entry].slice(-20);
+          tx.update(reqRef, {
+            status: nextStatus,
+            statusHistory: nextHistory,
+            version: nextVer,
+            updatedAt: serverTimestamp()
+          });
+          if (trSnap.exists()) {
+            tx.update(trRef, {
+              status: nextStatus,
+              statusHistory: nextHistory,
+              version: nextVer,
+              updatedAt: serverTimestamp()
+            });
+          }
+          if (ord && ord.state !== 'cancelled') {
+            tx.update(ordRef, {
+              deliveryStatus: nextStatus,
+              fulfillment: nextStatus === 'delivered' ? 'delivered' : ord.fulfillment,
+              version: (ord.version || 1) + 1,
+              updatedAt: serverTimestamp()
+            });
+            if (
+              nextStatus === 'delivered' &&
+              ord.state === 'closed' &&
+              tableLockSnap?.exists() &&
+              tableLockSnap.data().active === true &&
+              tableLockSnap.data().resourceId === ord.id
+            ) {
+              tx.update(tableLockRef, {
+                active: false,
+                version: (tableLockSnap.data().version || 1) + 1,
+                updatedAt: serverTimestamp()
+              });
+            }
+          }
+          const auditId = crypto.randomUUID();
+          tx.set(doc(db, 'businesses', businessId, 'auditLogs', auditId), {
+            id: auditId,
+            actorId: auth.currentUser.uid,
+            action: 'online_order.status.' + nextStatus,
+            entityId: req.id,
+            createdAt: serverTimestamp()
+          });
+        }).catch((err) => {
+          if (err instanceof HttpError) throw err;
+          handleFirestoreError(err, OperationType.UPDATE, reqRef.path);
+        });
+        return json({ ok: true });
+      }
+
+      if (action === 'cancel') {
+        const reason = clean(body.reason, 200);
+        if (reason.length < 3) fail(400, 'Informe o motivo do cancelamento (mínimo 3 caracteres).');
+        await runTransaction(db, async (tx) => {
+          const reqSnap = await tx.get(reqRef);
+          if (!reqSnap.exists()) fail(404, 'Pedido online não encontrado.');
+          const req = reqSnap.data();
+          const trRef = doc(db, 'businesses', businessId, 'publicOrderTrackers', req.trackingToken);
+          const ordRef = req.convertedOrderId ? doc(db, 'businesses', businessId, 'orders', req.convertedOrderId) : null;
+          const [trSnap, ordSnap] = await Promise.all([
+            tx.get(trRef),
+            ordRef ? tx.get(ordRef) : Promise.resolve(null)
+          ]);
+          const ord = ordSnap?.exists() ? ordSnap.data() : null;
+          const tableLockRef = ord?.tableNumber != null ? tableLockDocRef(businessId, ord.tableNumber) : null;
+          const tableLockSnap = tableLockRef ? await tx.get(tableLockRef) : null;
+
+          if (req.status === 'cancelled') return;
+          if (['delivered', 'rejected'].includes(req.status)) {
+            fail(409, 'Este pedido já foi finalizado ou recusado.');
+          }
+          if (req.status === 'awaiting_confirmation') {
+            fail(409, 'Use Recusar para pedidos que ainda não foram confirmados.');
+          }
+          let restoreInv = null;
+          if (ord) {
+            if ((ord.paidCents || 0) > 0 || ord.state === 'closed') {
+              fail(409, 'O pedido já possui pagamento registrado. Estorne o recebimento no caixa antes de cancelar.');
+            }
+            if (ord.state === 'open') {
+              if (ord.onlineOrderId === req.id) {
+                restoreInv = await prepareInventoryRestoration(tx, businessId, ord.items || [], ord.id, reason, user);
+              }
+            }
+          }
+          const nextVer = (req.version || 1) + 1;
+          const entry = { status: 'cancelled', reason, at: nowIso(), actorName: user.name || 'Caixa' };
+          const nextHistory = [...(req.statusHistory || []), entry].slice(-20);
+
+          tx.update(reqRef, {
+            status: 'cancelled',
+            statusReason: reason,
+            statusHistory: nextHistory,
+            version: nextVer,
+            updatedAt: serverTimestamp()
+          });
+          if (trSnap.exists()) {
+            tx.update(trRef, {
+              status: 'cancelled',
+              statusReason: reason,
+              statusHistory: nextHistory,
+              version: nextVer,
+              updatedAt: serverTimestamp()
+            });
+          }
+          if (ord && ord.state === 'open' && ord.onlineOrderId === req.id) {
+            tx.update(ordRef, {
+              state: 'cancelled',
+              fulfillment: 'delivered',
+              deliveryStatus: 'cancelled',
+              authorizedBy: user.id,
+              version: (ord.version || 1) + 1,
+              updatedAt: serverTimestamp()
+            });
+            if (restoreInv) restoreInv();
+            if (tableLockSnap?.exists() && tableLockSnap.data().active === true && tableLockSnap.data().resourceId === ord.id) {
+              tx.update(tableLockRef, {
+                active: false,
+                version: (tableLockSnap.data().version || 1) + 1,
+                updatedAt: serverTimestamp()
+              });
+            }
+          }
+          const auditId = crypto.randomUUID();
+          tx.set(doc(db, 'businesses', businessId, 'auditLogs', auditId), {
+            id: auditId,
+            actorId: auth.currentUser.uid,
+            action: 'online_order.cancel: ' + clean(reason, 170),
+            entityId: req.id,
+            createdAt: serverTimestamp()
+          });
+        }).catch((err) => {
+          if (err instanceof HttpError) throw err;
+          handleFirestoreError(err, OperationType.UPDATE, reqRef.path);
+        });
+        return json({ ok: true });
+      }
     }
 
     // /api/erp/*

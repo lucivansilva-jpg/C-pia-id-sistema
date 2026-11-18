@@ -2,8 +2,11 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
 
+const contractCode = fs.readFileSync(new URL('../web/contract.js', import.meta.url), 'utf8');
 const clientCode = fs.readFileSync(new URL('../web/firebase-client.js', import.meta.url), 'utf8');
 const apiCode = fs.readFileSync(new URL('../web/system/firebase-api.js', import.meta.url), 'utf8');
+const receiptsCode = fs.readFileSync(new URL('../web/system/receipts.js', import.meta.url), 'utf8');
+const overviewModelCode = fs.readFileSync(new URL('../web/system/overview-model.js', import.meta.url), 'utf8');
 
 class FakeTimestamp {
   constructor(ms) {
@@ -132,9 +135,17 @@ function checkRuleRead(path, docData) {
   const p = parseBizPath(path);
   if (!p) return;
   const actor = currentActor();
+  if (p.sub === 'publicSettings' && p.docId === 'menu') return;
+  if (p.sub === 'publicOrderTrackers' && p.docId && p.rest.length === 0) {
+    if (!/^[a-zA-Z0-9_-]{32,80}$/.test(p.docId)) throw permError('Invalid tracker token');
+    return;
+  }
   if (!actor.user || actor.businessId !== p.businessId) throw permError(`Cross-tenant read denied: ${path}`);
   if (p.sub === 'tables' && isRetailBiz(p.businessId)) {
     throw permError('Retail mode forbids reading tables');
+  }
+  if (p.sub === 'onlineOrders' && !actor.hasPerm('payments.receive')) {
+    throw permError('Online orders read denied for non-cashier');
   }
   if (p.sub === 'products' && p.rest[0] === 'private' && p.rest[1] === 'cost') {
     if (!actor.hasPerm('products.costs')) throw permError(`Private cost read denied for ${actor.user.role}`);
@@ -161,14 +172,39 @@ function checkRuleWrite(path, incoming, existing, isCreate) {
   const p = parseBizPath(path);
   if (!p) return;
   const actor = currentActor();
-  if (!actor.user || actor.businessId !== p.businessId) throw permError(`Cross-tenant write denied: ${path}`);
   const retail = isRetailBiz(p.businessId);
+  const pubMenu = store.get(`businesses/${p.businessId}/publicSettings/menu`);
+  const onlineOpen = !retail && pubMenu?.onlineOrdersEnabled === true;
+
+  if (p.sub === 'onlineOrders' && isCreate && incoming) {
+    if (!onlineOpen) throw permError('Online ordering disabled or retail');
+    if (incoming.status !== 'awaiting_confirmation' || incoming.paidCents !== 0 || incoming.paymentStatus !== 'unpaid' || incoming.convertedOrderId !== null) {
+      throw permError('Invalid public onlineOrder create payload');
+    }
+    return;
+  }
+  if (p.sub === 'publicOrderTrackers' && isCreate && incoming) {
+    if (!onlineOpen) throw permError('Online ordering disabled or retail');
+    if (Object.hasOwn(incoming, 'customerName') || Object.hasOwn(incoming, 'customerPhone') || Object.hasOwn(incoming, 'deliveryAddress')) {
+      throw permError('Tracker must not contain PII');
+    }
+    return;
+  }
+
+  if (!actor.user || actor.businessId !== p.businessId) throw permError(`Cross-tenant write denied: ${path}`);
+
+  if ((p.sub === 'onlineOrders' || p.sub === 'publicOrderTrackers') && !isCreate) {
+    if (retail || !actor.hasPerm('payments.receive')) throw permError('Online order update denied');
+  }
 
   if (p.sub === 'settings' && p.docId === 'main' && incoming && !actor.platform) {
     const prevKind = existing?.businessKind ?? null;
     if (isCreate && incoming.businessKind !== 'food') throw permError('Tenant cannot choose retail businessKind on create');
     if (!isCreate && ((prevKind != null && incoming.businessKind !== prevKind) || (prevKind == null && incoming.businessKind !== 'food'))) {
       throw permError('Tenant cannot alter businessKind');
+    }
+    if (!isCreate && (JSON.stringify(incoming.modules ?? null) !== JSON.stringify(existing?.modules ?? null) || (incoming.userLimit ?? null) !== (existing?.userLimit ?? null))) {
+      throw permError('Tenant cannot alter contract modules or userLimit');
     }
   }
   if (p.sub === 'tables' && retail) throw permError('Retail mode forbids tables');
@@ -273,6 +309,13 @@ function checkAtomicTransactionInvariants(staged) {
         if (!csPrev || csPrev.state !== 'open' || !csStaged || csStaged.version !== (csPrev.version || 1) + 1) {
           throw permError('Order payment ledger missing open cashSession atomic update');
         }
+      }
+    }
+    if (p.sub === 'onlineOrders' && !prev) {
+      const trPath = `businesses/${p.businessId}/publicOrderTrackers/${s.next.trackingToken}`;
+      const trStaged = staged.find((x) => x.path === trPath)?.next;
+      if (!trStaged || trStaged.requestId !== p.docId) {
+        throw permError('onlineOrders create requires atomic publicOrderTrackers creation');
       }
     }
   }
@@ -398,10 +441,29 @@ const sdk = {
       update: (ref, data) => ops.push({ op: 'update', ref, data }),
       delete: (ref) => ops.push({ op: 'delete', ref }),
       async commit() {
+        const now = tickClock();
+        const staged = [];
         for (const item of ops) {
-          if (item.op === 'set') await sdk.setDoc(item.ref, item.data);
-          else if (item.op === 'update') await sdk.updateDoc(item.ref, item.data);
-          else await sdk.deleteDoc(item.ref);
+          const cur = staged.findLast((s) => s.path === item.ref.path)?.next ?? readRaw(item.ref.path);
+          if (item.op === 'delete') {
+            checkRuleWrite(item.ref.path, null, cur, false);
+            staged.push({ path: item.ref.path, next: undefined });
+          } else if (item.op === 'update') {
+            if (!cur) throw new Error(`Document missing for update: ${item.ref.path}`);
+            const next = { ...cur, ...resolveTimestamps(item.data, now) };
+            checkRuleWrite(item.ref.path, next, cur, false);
+            staged.push({ path: item.ref.path, next });
+          } else {
+            const next = resolveTimestamps(item.data, now);
+            checkRuleWrite(item.ref.path, next, cur, cur === undefined);
+            staged.push({ path: item.ref.path, next });
+          }
+        }
+        checkAtomicTransactionInvariants(staged);
+        for (const s of staged) {
+          if (s.next === undefined) store.delete(s.path);
+          else store.set(s.path, s.next);
+          versions.set(s.path, (versions.get(s.path) || 0) + 1);
         }
       }
     };
@@ -485,8 +547,11 @@ globalThis.window = globalThis;
 globalThis.location = new URL('https://localhost:3000/system/');
 globalThis.IDFirebaseSDK = sdk;
 
+vm.runInThisContext(contractCode, { filename: 'web/contract.js' });
 vm.runInThisContext(clientCode, { filename: 'web/firebase-client.js' });
 vm.runInThisContext(apiCode, { filename: 'web/system/firebase-api.js' });
+vm.runInThisContext(receiptsCode, { filename: 'web/system/receipts.js' });
+vm.runInThisContext(overviewModelCode, { filename: 'web/system/overview-model.js' });
 
 const api = globalThis.IDFirebaseApi;
 const { effectivePermissions } = globalThis.IDFirebase;
@@ -1179,6 +1244,299 @@ let directOrderId;
   const waiter=makeAccount('biz_commands','commands_waiter','Garçom','waiter');asAccount(waiter);
   assert.equal((await req('POST',`/api/orders/${first.data.id}/transfer`,{request_key:'commands_denied01',target_table_number:2,reason:'Tentativa sem permissão',version:firstRaw.version})).status,403);
   console.log('PASS [13] Transferência, complemento, separação e junção preservam total, estoque, bloqueios e permissões');
+}
+
+// 14. Digital menu online ordering, pickup, own delivery with area fees, module gating, RBAC, thermal receipt & rollback.
+{
+  // A. Retail & non-contracted Food cannot access /api/online-orders or enable online/delivery modules
+  const retailAdmin = makeAccount('biz_retail', 'admin_retail', 'Dono Varejo', 'admin');
+  retailAdmin.business.business_kind = 'retail';
+  retailAdmin.business.modules = { finance: true, inventory: true, costs: true, tables: true, online_orders: true, delivery: true };
+  asAccount(retailAdmin);
+  assert.equal((await req('GET', '/api/online-orders')).status, 403);
+  assert.equal((await req('PUT', '/api/settings', {
+    name: 'Loja Varejo', mode: 'complete', paper: 80, online_orders_enabled: true
+  })).status, 403);
+  assert.equal(globalThis.IDContract.modules({ businessKind: 'retail', modules: retailAdmin.business.modules }).online_orders, false);
+  assert.equal(globalThis.IDContract.modules({ businessKind: 'retail', modules: retailAdmin.business.modules }).delivery, false);
+  assert.throws(() => globalThis.buildReceiptHtml({ order: { id: 'o1', number: 1, items: [], total_cents: 100, paid_cents: 0, created_at: new Date().toISOString() }, settings: { business_kind: 'retail' } }, 'delivery'), /Impressão indisponível no varejo/);
+
+  // Non-contracted food business blocked from /api/online-orders and enabling online orders
+  asAccount(adminA);
+  assert.equal((await req('GET', '/api/online-orders')).status, 403);
+  assert.equal((await req('PUT', '/api/settings', {
+    name: 'Lanchonete A', mode: 'complete', paper: 80, online_orders_enabled: true
+  })).status, 403);
+
+  // B. Seed Food business WITH online_orders & delivery contracted by platform
+  seedTenant('biz_delivery', 'food');
+  const sDeliv = store.get('businesses/biz_delivery/settings/main');
+  sDeliv.modules = { tables: true, finance: true, inventory: true, costs: true, online_orders: true, delivery: true };
+  sDeliv.userLimit = 5;
+  store.set('businesses/biz_delivery/settings/main', sDeliv);
+
+  const dAdmin = makeAccount('biz_delivery', 'admin_deliv', 'Dono Delivery', 'admin');
+  dAdmin.business.modules = sDeliv.modules;
+  const dCashier = makeAccount('biz_delivery', 'cashier_deliv', 'Caixa Delivery', 'cashier');
+  dCashier.business.modules = sDeliv.modules;
+  const dWaiter = makeAccount('biz_delivery', 'waiter_deliv', 'Garçom Delivery', 'waiter');
+  dWaiter.business.modules = sDeliv.modules;
+
+  // Owner cannot mutate contract modules/userLimit via /api/settings
+  asAccount(dAdmin);
+  assert.equal((await req('PUT', '/api/settings', {
+    name: 'Lanchonete Delivery', mode: 'complete', paper: 80, modules: { online_orders: false }
+  })).status, 403);
+
+  // Cannot enable delivery without at least one active area
+  assert.equal((await req('PUT', '/api/settings', {
+    name: 'Lanchonete Delivery', mode: 'complete', paper: 80,
+    online_orders_enabled: true, pickup_enabled: true, pickup_message: 'Retire no balcão',
+    delivery_enabled: true, delivery_min_order_cents: 1500, delivery_default_minutes: 40, delivery_areas: []
+  })).status, 400);
+
+  // Save valid settings + delivery areas & create unit-tracked product
+  const saveSet = await req('PUT', '/api/settings', {
+    name: 'Lanchonete Delivery', mode: 'complete', paper: 80,
+    online_orders_enabled: true, pickup_enabled: true, pickup_message: 'Retire no balcão',
+    delivery_enabled: true, delivery_min_order_cents: 1500, delivery_default_minutes: 40,
+    delivery_areas: [
+      { id: 'area_centro', name: 'Centro', fee_cents: 600, min_order_cents: 2000, estimated_minutes: 35, active: true },
+      { id: 'area_inativa', name: 'Distante', fee_cents: 1200, min_order_cents: 0, estimated_minutes: 60, active: false }
+    ]
+  });
+  assert.equal(saveSet.status, 200, JSON.stringify(saveSet.data));
+  const pubMenu = store.get('businesses/biz_delivery/publicSettings/menu');
+  assert.equal(pubMenu.onlineOrdersEnabled, true);
+  assert.equal(pubMenu.deliveryEnabled, true);
+  assert.equal(pubMenu.deliveryAreas.length, 1);
+  assert.equal(pubMenu.deliveryAreas[0].id, 'area_centro');
+
+  const dProd = await req('POST', '/api/products', {
+    request_key: 'deliv_prod_0001',
+    name: 'Combo Burger',
+    price_cents: 2500,
+    cost_cents: 900,
+    cost_mode: 'direct',
+    stock_mode: 'unit',
+    sale_unit: 'un',
+    initial_stock: 10,
+    active: true,
+    available: true,
+    visible: true,
+    options: [{ label: 'Ponto', required: true, values: ['Ao ponto', 'Bem passado'] }],
+    addons: [{ name: 'Bacon', price_cents: 400, cost_cents: 150 }]
+  });
+  assert.equal(dProd.status, 201, JSON.stringify(dProd.data));
+  const rawDProd = store.get(`businesses/biz_delivery/products/${dProd.data.id}`);
+  assert.equal(store.get(`businesses/biz_delivery/inventoryStock/${rawDProd.finishedInventoryId}`).balanceMilli, 10000);
+
+  const dOpenCash = await req('POST', '/api/cash/open', { request_key: 'deliv_cash_open1', opening_cents: 10000 });
+  assert.equal(dOpenCash.status, 201);
+  const dSessionId = dOpenCash.data.id;
+
+  // C. Public client submits a delivery request (unauthenticated) via writeBatch (exact menu.js contract)
+  asAccount(null);
+  const delivReqId = 'req_public_delivery_order_0001';
+  const delivToken = 'tok_delivery_secret_0123456789abcdef0123456789';
+  const pubBatch = sdk.writeBatch(fakeDb);
+  pubBatch.set(sdk.doc(fakeDb, 'businesses', 'biz_delivery', 'onlineOrders', delivReqId), {
+    id: delivReqId, requestKey: delivReqId, trackingToken: delivToken, publicCode: 'OL1001',
+    source: 'public_menu', mode: 'delivery', tableNumber: null, status: 'awaiting_confirmation', statusReason: null,
+    customerName: 'Carlos Silva', customerPhone: '11988887777', notes: 'Sem cebola',
+    items: [{ product_id: dProd.data.id, name: 'Combo Burger', quantity: 1, base_unit_price_cents: 2500, unit_price_cents: 2900, selections: { Ponto: 'Ao ponto' }, addons: [{ name: 'Bacon', price_cents: 400, quantity: 1 }], note: '' }],
+    subtotalCents: 2900, deliveryAreaId: 'area_centro', deliveryAreaName: 'Centro', deliveryFeeCents: 600,
+    deliveryAddress: { areaId: 'area_centro', areaName: 'Centro', street: 'Rua das Flores', number: '123', complement: 'Apto 2', reference: 'Perto da praça' },
+    estimatedMinutes: 35, paymentIntent: 'cash', changeForCents: 5000,
+    totalCents: 3500, paidCents: 0, paymentStatus: 'unpaid',
+    convertedOrderId: null, convertedOrderNumber: null, confirmedBy: null, confirmedAt: null,
+    statusHistory: [{ status: 'awaiting_confirmation', at: '2026-11-16T12:00:00.000Z', actorName: 'Cliente' }],
+    version: 1, createdAt: sdk.serverTimestamp(), updatedAt: sdk.serverTimestamp()
+  });
+  pubBatch.set(sdk.doc(fakeDb, 'businesses', 'biz_delivery', 'publicOrderTrackers', delivToken), {
+    trackingToken: delivToken, requestId: delivReqId, publicCode: 'OL1001',
+    mode: 'delivery', tableNumber: null, areaName: 'Centro', estimatedMinutes: 35, paymentIntent: 'cash',
+    subtotalCents: 2900, deliveryFeeCents: 600, totalCents: 3500,
+    status: 'awaiting_confirmation', statusReason: null, pickupMessage: null, itemCount: 1,
+    statusHistory: [{ status: 'awaiting_confirmation', at: '2026-11-16T12:00:00.000Z', actorName: 'Cliente' }],
+    version: 1, createdAt: sdk.serverTimestamp(), updatedAt: sdk.serverTimestamp()
+  });
+  await pubBatch.commit();
+
+  // Public tracker readable without auth and zero PII; onlineOrders blocked without auth or for waiter
+  const trPublic = await sdk.getDoc(sdk.doc(fakeDb, 'businesses', 'biz_delivery', 'publicOrderTrackers', delivToken));
+  assert.equal(trPublic.exists(), true);
+  assert.equal(Object.hasOwn(trPublic.data(), 'customerName'), false);
+  assert.equal(Object.hasOwn(trPublic.data(), 'deliveryAddress'), false);
+  await assert.rejects(() => sdk.getDoc(sdk.doc(fakeDb, 'businesses', 'biz_delivery', 'onlineOrders', delivReqId)), /Cross-tenant|denied|permissions/);
+
+  // Waiter is strictly blocked from online orders
+  asAccount(dWaiter);
+  assert.equal((await req('GET', '/api/online-orders')).status, 403);
+  assert.equal((await req('POST', `/api/online-orders/${delivReqId}/confirm`, {})).status, 403);
+  await assert.rejects(() => sdk.getDoc(sdk.doc(fakeDb, 'businesses', 'biz_delivery', 'onlineOrders', delivReqId)), /non-cashier|denied|permissions/);
+
+  // D. Overview metrics reflect awaiting online prediction WITHOUT altering cash drawer or revenue
+  asAccount(dAdmin);
+  const preList = await req('GET', '/api/online-orders');
+  assert.equal(preList.status, 200);
+  assert.equal(preList.data.summary.awaiting_count, 1);
+  assert.equal(preList.data.summary.predicted_total_cents, 3500);
+  assert.equal(preList.data.summary.predicted_delivery_fees_cents, 600);
+  const ovBefore = globalThis.OwnerOverview.summarize({
+    report: { summary: { revenue_cents: 0, operating_expenses_cents: 0, estimated_result_cents: 0, orders: 0, ticket_cents: 0, missing_cost_quantity: 0, unclassified_expenses: 0 } },
+    cash: { session: { balance_cents: 10000, opened_at: '2026-11-16T12:00:00.000Z' }, history: [] },
+    onlineOrders: preList.data
+  });
+  assert.equal(ovBefore.onlineAwaiting, 1);
+  assert.equal(ovBefore.onlinePredictedCents, 3500);
+  assert.equal(ovBefore.summary.revenue_cents, 0);
+  assert.equal(ovBefore.cashSession.balance_cents, 10000);
+
+  // E. Cashier confirms online delivery order -> creates real order (unpaid), deducts stock, idempotent
+  asAccount(dCashier);
+  const conf1 = await req('POST', `/api/online-orders/${delivReqId}/confirm`, {});
+  assert.equal(conf1.status, 201, JSON.stringify(conf1.data));
+  const confDup = await req('POST', `/api/online-orders/${delivReqId}/confirm`, {});
+  assert.equal(confDup.status, 200);
+  assert.equal(confDup.data.already_confirmed, true);
+  assert.equal(confDup.data.id, conf1.data.id);
+  assert.equal(store.get(`businesses/biz_delivery/inventoryStock/${rawDProd.finishedInventoryId}`).balanceMilli, 9000);
+  assert.equal(store.get(`businesses/biz_delivery/cashSessions/${dSessionId}`).cashBalanceCents, 10000);
+
+  // Delivery print slip explicitly displays address + fee + unpaid notice when unpaid
+  const printPayload = await req('GET', `/api/orders/${conf1.data.id}/print`);
+  assert.equal(printPayload.status, 200);
+  const slipHtml = globalThis.buildReceiptHtml(printPayload.data, 'delivery');
+  assert.ok(slipHtml.includes('PEDIDO PARA ENTREGA'));
+  assert.ok(slipHtml.includes('Rua das Flores'));
+  assert.ok(slipHtml.includes('PAGAMENTO NÃO CONFIRMADO — COBRAR / CONFERIR NO ATENDIMENTO'));
+
+  // Status lifecycle: confirmed -> preparing -> out_for_delivery -> delivered
+  assert.equal((await req('POST', `/api/online-orders/${delivReqId}/status`, { status: 'preparing' })).status, 200);
+  assert.equal((await req('POST', `/api/online-orders/${delivReqId}/status`, { status: 'out_for_delivery' })).status, 200);
+  assert.equal((await req('POST', `/api/online-orders/${delivReqId}/status`, { status: 'delivered' })).status, 200);
+  assert.equal(store.get(`businesses/biz_delivery/publicOrderTrackers/${delivToken}`).status, 'delivered');
+  assert.equal(store.get(`businesses/biz_delivery/orders/${conf1.data.id}`).fulfillment, 'delivered');
+
+  // F. Manual settlement at PDV closes order, updates cash drawer, tracks delivery_fees_cents cleanly in managementReport
+  const payDeliv = await req('POST', `/api/orders/${conf1.data.id}/payment`, {
+    request_key: 'deliv_pay_req_001',
+    session_id: dSessionId,
+    method: 'cash',
+    amount_cents: 3500,
+    tendered_cents: 5000,
+    finish_if_paid: true
+  });
+  assert.equal(payDeliv.status, 201, JSON.stringify(payDeliv.data));
+  assert.equal(store.get(`businesses/biz_delivery/cashSessions/${dSessionId}`).cashBalanceCents, 13500);
+  asAccount(dAdmin);
+  const simDay = FakeTimestamp.now().toDate().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+  const rep = await req('GET', `/api/erp/reports?from=${simDay}&to=${simDay}`);
+  assert.equal(rep.status, 200, JSON.stringify(rep.data));
+  assert.equal(rep.data.summary.revenue_cents, 3500);
+  assert.equal(rep.data.summary.delivery_fees_cents, 600);
+  assert.equal(rep.data.products[0].revenue_cents, 2900);
+
+  // Paid order CANNOT be cancelled via /api/online-orders/:id/cancel
+  asAccount(dCashier);
+  assert.equal((await req('POST', `/api/online-orders/${delivReqId}/cancel`, { reason: 'Tentativa após pagamento' })).status, 409);
+
+  // Payment reflected live in GET /api/online-orders & Finance without altering cash with awaiting requests
+  const listAfterPay = await req('GET', '/api/online-orders');
+  assert.equal(listAfterPay.status, 200);
+  const delivLivePaid = listAfterPay.data.requests.find((x) => x.id === delivReqId);
+  assert.equal(delivLivePaid.paid_cents, 3500);
+  assert.equal(delivLivePaid.payment_status, 'paid');
+  assert.equal(delivLivePaid.order_state, 'closed');
+
+  // Partial refund on paid online order reflects net paid_cents & refund_cents in /api/online-orders and /api/orders
+  const delivOrderDetail = await req('GET', `/api/orders/${conf1.data.id}`);
+  assert.equal(delivOrderDetail.status, 200);
+  const delivPayId = delivOrderDetail.data.payments[0].id;
+  const refundRes = await req('POST', `/api/orders/${conf1.data.id}/refund`, {
+    request_key: 'deliv_refund_req_01',
+    payment_id: delivPayId,
+    session_id: dSessionId,
+    amount_cents: 1000,
+    reason: 'Item faltante na entrega',
+    confirmed: true
+  });
+  assert.equal(refundRes.status, 201, JSON.stringify(refundRes.data));
+  const listAfterRefund = await req('GET', '/api/online-orders');
+  const delivLiveRefunded = listAfterRefund.data.requests.find((x) => x.id === delivReqId);
+  assert.equal(delivLiveRefunded.paid_cents, 2500);
+  assert.equal(delivLiveRefunded.refund_cents, 1000);
+  assert.equal(delivLiveRefunded.payment_status, 'partial');
+  assert.equal((await req('GET', `/api/orders/${conf1.data.id}`)).data.order.paid_cents, 2500);
+
+  // G. Pickup rejection (mandatory reason) & unpaid confirmed cancellation (restores stock)
+  asAccount(null);
+  const pickReqId = 'req_public_pickup_order_00002';
+  const pickToken = 'tok_pickup_secret_0123456789abcdef0123456789ab';
+  const pickBatch = sdk.writeBatch(fakeDb);
+  pickBatch.set(sdk.doc(fakeDb, 'businesses', 'biz_delivery', 'onlineOrders', pickReqId), {
+    id: pickReqId, requestKey: pickReqId, trackingToken: pickToken, publicCode: 'OL1002',
+    source: 'public_menu', mode: 'pickup', tableNumber: null, status: 'awaiting_confirmation', statusReason: null,
+    customerName: 'Ana Souza', customerPhone: '11977776666', notes: '',
+    items: [{ product_id: dProd.data.id, name: 'Combo Burger', quantity: 2, base_unit_price_cents: 2500, unit_price_cents: 2500, selections: { Ponto: 'Bem passado' }, addons: [], note: '' }],
+    subtotalCents: 5000, deliveryAreaId: null, deliveryAreaName: null, deliveryFeeCents: 0, deliveryAddress: null,
+    estimatedMinutes: 20, paymentIntent: 'pay_at_counter', changeForCents: null,
+    totalCents: 5000, paidCents: 0, paymentStatus: 'unpaid',
+    convertedOrderId: null, convertedOrderNumber: null, confirmedBy: null, confirmedAt: null,
+    statusHistory: [{ status: 'awaiting_confirmation', at: '2026-11-16T12:05:00.000Z', actorName: 'Cliente' }],
+    version: 1, createdAt: sdk.serverTimestamp(), updatedAt: sdk.serverTimestamp()
+  });
+  pickBatch.set(sdk.doc(fakeDb, 'businesses', 'biz_delivery', 'publicOrderTrackers', pickToken), {
+    trackingToken: pickToken, requestId: pickReqId, publicCode: 'OL1002',
+    mode: 'pickup', tableNumber: null, areaName: null, estimatedMinutes: 20, paymentIntent: 'pay_at_counter',
+    subtotalCents: 5000, deliveryFeeCents: 0, totalCents: 5000,
+    status: 'awaiting_confirmation', statusReason: null, pickupMessage: 'Retire no balcão', itemCount: 2,
+    statusHistory: [{ status: 'awaiting_confirmation', at: '2026-11-16T12:05:00.000Z', actorName: 'Cliente' }],
+    version: 1, createdAt: sdk.serverTimestamp(), updatedAt: sdk.serverTimestamp()
+  });
+  await pickBatch.commit();
+
+  // Finance shows online_awaiting_summary without inflating sales_cents or open_orders_due
+  asAccount(dAdmin);
+  const finAwaiting = await req('GET', '/api/finance');
+  assert.equal(finAwaiting.status, 200);
+  assert.equal(finAwaiting.data.online_awaiting_summary.count, 1);
+  assert.equal(finAwaiting.data.online_awaiting_summary.amount_cents, 5000);
+  assert.equal(finAwaiting.data.summary.sales_cents, 2500);
+  assert.equal(finAwaiting.data.open_orders_due.amount_cents, 0);
+
+  asAccount(dCashier);
+  // Reject requires reason >= 3 chars
+  assert.equal((await req('POST', `/api/online-orders/${pickReqId}/reject`, { reason: 'ok' })).status, 400);
+  // Confirm pickup order (stock goes from 9 -> 7), partial-cancel 1 qty -> stock goes to 8 & /api/online-orders reflects total 2500!
+  const confPick = await req('POST', `/api/online-orders/${pickReqId}/confirm`, {});
+  assert.equal(confPick.status, 201);
+  assert.equal(store.get(`businesses/biz_delivery/inventoryStock/${rawDProd.finishedInventoryId}`).balanceMilli, 7000);
+  const pickRaw = store.get(`businesses/biz_delivery/orders/${confPick.data.id}`);
+  const partialPick = await req('POST', `/api/orders/${confPick.data.id}/partial-cancel`, {
+    request_key: 'pick_partial_cancel1',
+    version: pickRaw.version,
+    reason: 'Cliente reduziu quantidade para 1',
+    items: [{ item_id: pickRaw.items[0].id, quantity: 1 }]
+  });
+  assert.equal(partialPick.status, 200, JSON.stringify(partialPick.data));
+  assert.equal(store.get(`businesses/biz_delivery/inventoryStock/${rawDProd.finishedInventoryId}`).balanceMilli, 8000);
+  const listAfterPartial = await req('GET', '/api/online-orders');
+  const pickLivePartial = listAfterPartial.data.requests.find((x) => x.id === pickReqId);
+  assert.equal(pickLivePartial.total_cents, 2500);
+  assert.equal(listAfterPartial.data.summary.predicted_total_cents, 2500);
+
+  // Cancel remaining unpaid pickup order -> stock restored to 9!
+  assert.equal((await req('POST', `/api/online-orders/${pickReqId}/cancel`, { reason: '' })).status, 400);
+  const cancelPick = await req('POST', `/api/online-orders/${pickReqId}/cancel`, { reason: 'Cliente desistiu antes do preparo' });
+  assert.equal(cancelPick.status, 200);
+  assert.equal(store.get(`businesses/biz_delivery/inventoryStock/${rawDProd.finishedInventoryId}`).balanceMilli, 9000);
+  assert.equal(store.get(`businesses/biz_delivery/orders/${confPick.data.id}`).state, 'cancelled');
+  assert.equal(store.get(`businesses/biz_delivery/publicOrderTrackers/${pickToken}`).status, 'cancelled');
+  assert.equal(store.get(`businesses/biz_delivery/publicOrderTrackers/${pickToken}`).statusReason, 'Cliente desistiu antes do preparo');
+
+  console.log('PASS [14] Cardápio com pedido QR Code, retirada, delivery próprio, áreas, bloqueio Varejo/garçom, cupom e estorno de estoque');
 }
 
 console.log(`ALL_FUNCTIONAL_TESTS_PASSED (simulated reads counted: ${readCount})`);

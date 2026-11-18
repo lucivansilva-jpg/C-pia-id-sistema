@@ -63,6 +63,10 @@ for (const [label, marker] of dirtyDozenChecks) {
   }
 }
 
+assert.ok(rules.includes('function isValidOnlineOrder(') && rules.includes('function isValidPublicOrderTracker('), 'Must validate onlineOrders and publicOrderTrackers schemas');
+assert.ok(rules.includes('match /onlineOrders/{requestId}'), 'Must define onlineOrders match block');
+assert.ok(rules.includes('match /publicOrderTrackers/{trackingToken}'), 'Must define publicOrderTrackers match block');
+
 console.log(
   `STATIC_CHECKS_OK: ${Object.keys(blueprint.firestore).length} blueprint paths and 12/12 Dirty Dozen static guards verified.`
 );
@@ -576,6 +580,7 @@ async function runEmulatorSuite() {
           getAuth: () => ({ currentUser: { uid, emailVerified: false } }), getFirestore: () => db }
       });
       context.window = context;
+      vm.runInContext(fs.readFileSync(new URL('./web/contract.js', import.meta.url), 'utf8'), context);
       vm.runInContext(fs.readFileSync(new URL('./web/firebase-client.js', import.meta.url), 'utf8'), context);
       vm.runInContext(fs.readFileSync(new URL('./web/system/firebase-api.js', import.meta.url), 'utf8'), context);
       const permissions = context.IDFirebase.effectivePermissions({ role, permissions: {}, profile_permissions: {} });
@@ -725,7 +730,70 @@ async function runEmulatorSuite() {
     });
     await assertSucceeds(retailSaleBatch.commit());
 
-    console.log('EMULATOR_SUITE_OK: Todos os 6 fluxos (incluindo isolamento Varejo) passaram no Firebase Emulator.');
+    // Fluxo 7: Digital menu onlineOrders & zero-PII publicOrderTrackers (food-only, waiter/public PII isolated)
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      const ts = Timestamp.now();
+      await setDoc(doc(db, 'businesses', 'biz_a', 'publicSettings', 'menu'), {
+        name: 'Empresa biz_a',
+        businessKind: 'food',
+        onlineOrdersEnabled: true,
+        pickupEnabled: true,
+        deliveryEnabled: true,
+        deliveryMinOrderCents: 1000,
+        deliveryDefaultMinutes: 40,
+        deliveryAreas: [{ id: 'area_1', name: 'Centro', feeCents: 500, minOrderCents: 1000, estimatedMinutes: 35, active: true }],
+        active: true,
+        updatedAt: ts
+      });
+      await setDoc(doc(db, 'businesses', 'biz_retail', 'publicSettings', 'menu'), {
+        name: 'Empresa biz_retail',
+        businessKind: 'retail',
+        onlineOrdersEnabled: false,
+        pickupEnabled: false,
+        deliveryEnabled: false,
+        deliveryMinOrderCents: 0,
+        deliveryDefaultMinutes: 45,
+        deliveryAreas: [],
+        active: true,
+        updatedAt: ts
+      });
+    });
+
+    const anon = testEnv.unauthenticatedContext().firestore();
+    const reqPubId = 'req_emulator_online_order_001';
+    const tokPub = 'tok_emulator_public_0123456789abcdef01234567';
+    const okOnlineBatch = writeBatch(anon);
+    okOnlineBatch.set(doc(anon, 'businesses', 'biz_a', 'onlineOrders', reqPubId), {
+      id: reqPubId, requestKey: reqPubId, trackingToken: tokPub, publicCode: 'OL9901',
+      source: 'public_menu', mode: 'delivery', tableNumber: null, status: 'awaiting_confirmation', statusReason: null,
+      customerName: 'Cliente Emu', customerPhone: '11999998888', notes: '',
+      items: [{ product_id: 'prod_1', name: 'Café Espresso', quantity: 2, unit_price_cents: 600 }],
+      subtotalCents: 1200, deliveryAreaId: 'area_1', deliveryAreaName: 'Centro', deliveryFeeCents: 500,
+      deliveryAddress: { areaId: 'area_1', areaName: 'Centro', street: 'Rua A', number: '10', complement: '', reference: '' },
+      estimatedMinutes: 35, paymentIntent: 'cash', changeForCents: 2000,
+      totalCents: 1700, paidCents: 0, paymentStatus: 'unpaid',
+      convertedOrderId: null, convertedOrderNumber: null, confirmedBy: null, confirmedAt: null,
+      statusHistory: [{ status: 'awaiting_confirmation', at: '2026-11-16T12:00:00.000Z', actorName: 'Cliente' }],
+      version: 1, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+    });
+    okOnlineBatch.set(doc(anon, 'businesses', 'biz_a', 'publicOrderTrackers', tokPub), {
+      trackingToken: tokPub, requestId: reqPubId, publicCode: 'OL9901',
+      mode: 'delivery', tableNumber: null, areaName: 'Centro', estimatedMinutes: 35, paymentIntent: 'cash',
+      subtotalCents: 1200, deliveryFeeCents: 500, totalCents: 1700,
+      status: 'awaiting_confirmation', statusReason: null, pickupMessage: null, itemCount: 2,
+      statusHistory: [{ status: 'awaiting_confirmation', at: '2026-11-16T12:00:00.000Z', actorName: 'Cliente' }],
+      version: 1, createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+    });
+    await assertSucceeds(okOnlineBatch.commit());
+
+    // Public can read tracker via token, never onlineOrders PII, and cannot write to retail
+    await assertSucceeds(getDoc(doc(anon, 'businesses', 'biz_a', 'publicOrderTrackers', tokPub)));
+    await assertFails(getDoc(doc(anon, 'businesses', 'biz_a', 'onlineOrders', reqPubId)));
+    await assertFails(getDoc(doc(waiter1, 'businesses', 'biz_a', 'onlineOrders', reqPubId)));
+    await assertSucceeds(getDoc(doc(cashierNoProd, 'businesses', 'biz_a', 'onlineOrders', reqPubId)));
+
+    console.log('EMULATOR_SUITE_OK: Todos os 7 fluxos (incluindo pedidos online e isolamento Varejo) passaram no Firebase Emulator.');
   } finally {
     await testEnv.cleanup();
   }

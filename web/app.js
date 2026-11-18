@@ -1,7 +1,7 @@
-const fb = window.IDFirebase;
+const fb = window.IDFirebase || {};
 const {
-  auth,
-  db,
+  auth = null,
+  db = null,
   OperationType,
   handleFirestoreError,
   tsToIso,
@@ -41,7 +41,7 @@ const {
     runTransaction,
     serverTimestamp,
     Timestamp
-  }
+  } = {}
 } = fb;
 
 const $ = (s) => document.querySelector(s);
@@ -54,7 +54,10 @@ const esc = (v) =>
     "'": '&#39;'
   }[c]));
 
-let current = null;
+window.current = null;
+var current = null;
+window.loadBusinesses = window.loadBusinesses || (async () => {});
+var loadBusinesses = window.loadBusinesses;
 let people = [];
 let catalog = [];
 let editing = null;
@@ -294,21 +297,30 @@ async function firestoreRequest(path, options = {}) {
     const previousModules=IDContract.modules(existingContract.data()||{});
     const reducing=Object.keys(mods).some(k=>previousModules[k]&&!mods[k]) || existingContract.data()?.businessKind!==kind;
     if(reducing){
-      const [sessions,orders,members,products,accounts]=await Promise.all(['cashSessions','orders','members','products','accounts'].map(c=>getDocs(collection(db,'businesses',id,c))));
+      const [sessions,orders,members,products,accounts,onlineOrders]=await Promise.all(['cashSessions','orders','members','products','accounts','onlineOrders'].map(c=>getDocs(collection(db,'businesses',id,c))));
       if(sessions.docs.some(d=>d.data().state==='open'))throw Error('Feche o caixa antes de reduzir módulos ou mudar a modalidade.');
       if(orders.docs.some(d=>d.data().state==='open'||d.data().fulfillment==='pending'))throw Error('Conclua as comandas e entregas pendentes antes de reduzir módulos.');
+      if((!mods.online_orders||!mods.delivery||existingContract.data()?.businessKind!==kind)&&onlineOrders.docs.some(d=>['awaiting_confirmation','confirmed','preparing','ready_for_pickup','out_for_delivery'].includes(d.data().status)))throw Error('Conclua os pedidos online e entregas pendentes antes de desativar os módulos online ou mudar a modalidade.');
       if(!mods.tables&&members.docs.some(d=>d.data().active&&d.data().role==='waiter'))throw Error('Altere o perfil ou desative os garçons antes de retirar Mesas e atendimento.');
       if(!mods.inventory&&products.docs.some(d=>d.data().active&&d.data().stockMode!=='none'))throw Error('Desative o controle de estoque dos produtos antes de retirar Estoque e compras.');
       if(!mods.finance&&accounts.docs.some(d=>d.data().state==='pending'))throw Error('Resolva as contas financeiras pendentes antes de retirar o Financeiro.');
     }
     const auditId=crypto.randomUUID();
+    const pubRef=doc(db,'businesses',id,'publicSettings','menu');
     await runTransaction(db,async tx=>{
-      const snap=await tx.get(sr);if(!snap.exists())throw Error('Configure o estabelecimento antes do contrato.');
+      const [snap,pubSnap]=await Promise.all([tx.get(sr),tx.get(pubRef)]);
+      if(!snap.exists())throw Error('Configure o estabelecimento antes do contrato.');
       const previous=snap.data();
       if(previous.activeUserCount==null)throw Error('Cadastro legado: execute primeiro a migração explícita de contagem em ambiente isolado. Nenhum acesso foi alterado.');
       if(userLimit<previous.activeUserCount)throw Error('Desative usuários antes de reduzir o limite. Ativos: '+previous.activeUserCount);
       if(previous.businessKind!==existingContract.data().businessKind || JSON.stringify(previous.modules)!==JSON.stringify(existingContract.data().modules))throw Error('O contrato foi alterado. Atualize a tela antes de salvar.');
-      tx.update(sr,{modules:mods,userLimit,businessKind:kind,updatedAt:serverTimestamp()});
+      const nextSettingsFlags=(kind==='retail'||!mods.online_orders)
+        ? {onlineOrdersEnabled:false,pickupEnabled:false,deliveryEnabled:false}
+        : (!mods.delivery?{deliveryEnabled:false}:{});
+      tx.update(sr,{modules:mods,userLimit,businessKind:kind,...nextSettingsFlags,updatedAt:serverTimestamp()});
+      if(pubSnap.exists()){
+        tx.update(pubRef,{businessKind:kind,...nextSettingsFlags,updatedAt:serverTimestamp()});
+      }
       tx.set(doc(db,'businesses',id,'auditLogs',auditId),{id:auditId,actorId:auth.currentUser.uid,action:'business.contract.update',entityId:id,details:{previous:{modules:previous.modules??null,userLimit:previous.userLimit??null},modules:mods,userLimit},createdAt:serverTimestamp()});
     });return {ok:true};
   }
@@ -617,6 +629,13 @@ async function firestoreRequest(path, options = {}) {
       blindClose: false,
       logoKey: null,
       themeColor: '#6a330d',
+      onlineOrdersEnabled: false,
+      pickupEnabled: false,
+      pickupMessage: '',
+      deliveryEnabled: false,
+      deliveryMinOrderCents: 0,
+      deliveryDefaultMinutes: 40,
+      deliveryAreas: [],
       updatedAt: serverTimestamp()
     });
 
@@ -626,6 +645,14 @@ async function firestoreRequest(path, options = {}) {
       phone: '',
       logoDataUrl: null,
       themeColor: '#6a330d',
+      businessKind,
+      onlineOrdersEnabled: false,
+      pickupEnabled: false,
+      pickupMessage: '',
+      deliveryEnabled: false,
+      deliveryMinOrderCents: 0,
+      deliveryDefaultMinutes: 40,
+      deliveryAreas: [],
       active: true,
       updatedAt: serverTimestamp()
     });
@@ -1080,7 +1107,7 @@ $('#memberForm').onsubmit = async (e) => {
   }
 };
 
-let loadBusinesses = async () => {};
+loadBusinesses = window.loadBusinesses || (async () => {});
 
 (async () => {
   try {
@@ -1120,7 +1147,12 @@ $('#createBusiness').onclick = () => {
   $('#platformEditor .dialog-error').textContent = '';
   $('#businessForm [data-contract]')?.remove();
   $('#businessForm').elements.business_kind.closest('label').insertAdjacentHTML('afterend',IDContract.fields({modules:{},businessKind:'food',userLimit:1},1));
-  $('#businessForm').elements.business_kind.onchange=()=>IDContract.updateKind($('#businessForm'));
+  const bf = $('#businessForm');
+  bf.elements.business_kind.onchange=()=>IDContract.updateKind(bf);
+  if (bf.elements.module_delivery && bf.elements.module_online_orders) {
+    bf.elements.module_delivery.onchange = () => { if (bf.elements.module_delivery.checked) bf.elements.module_online_orders.checked = true; };
+    bf.elements.module_online_orders.onchange = () => { if (!bf.elements.module_online_orders.checked) bf.elements.module_delivery.checked = false; };
+  }
   $('#platformEditor').showModal();
 };
 

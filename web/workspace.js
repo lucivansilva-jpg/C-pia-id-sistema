@@ -242,7 +242,9 @@ const categoryLabels = {
   suggestion: 'Sugestão',
   complaint: 'Reclamação'
 };
-let workspace = null;
+window.workspace = null;
+var workspace = null;
+var loadBusinesses = window.loadBusinesses || (async () => {});
 let workspaceTickets = [];
 let activeTicket = null;
 let workspaceBusy = false;
@@ -354,7 +356,7 @@ function drawTickets() {
   }
 }
 
-loadBusinesses = async function () {
+window.loadBusinesses = loadBusinesses = async function () {
   if (workspaceBusy) return;
   workspaceBusy = true;
   try {
@@ -362,7 +364,7 @@ loadBusinesses = async function () {
       supportApi('/platform/workspace'),
       supportApi('/platform/tickets?status=' + $('#ticketStatusFilter').value)
     ]);
-    workspace = overview;
+    window.workspace = workspace = overview;
     businessList = overview.businesses;
     workspaceTickets = tickets.tickets;
     drawWorkspace();
@@ -472,10 +474,12 @@ document.addEventListener('click', async (e) => {
   }
 });
 
+const getWsCur = () => (typeof current !== 'undefined' ? current : (window.current || null));
 setInterval(() => {
+  const c = getWsCur();
   if (
-    current?.platform &&
-    !current.business &&
+    c?.platform &&
+    !c.business &&
     !document.hidden &&
     !document.querySelector('dialog[open]')
   ) {
@@ -486,7 +490,8 @@ setInterval(() => {
   }
 }, 30000);
 
-if (current?.platform && !current.business) loadBusinesses().catch((e) => message(e.message));
+const initCur = getWsCur();
+if (initCur?.platform && !initCur.business) loadBusinesses().catch((e) => message(e.message));
 $('#refreshTicket').onclick = () => {
   if (activeTicket) openTicket(activeTicket.id).catch((e) => message(e.message));
 };

@@ -420,6 +420,30 @@
           "minimum": 0,
           "maximum": 1000
         },
+        "onlineOrdersEnabled": {
+          "type": "boolean"
+        },
+        "pickupEnabled": {
+          "type": "boolean"
+        },
+        "pickupMessage": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "deliveryEnabled": {
+          "type": "boolean"
+        },
+        "deliveryMinOrderCents": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "deliveryDefaultMinutes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "deliveryAreas": {
+          "type": "array"
+        },
         "updatedAt": {
           "type": "string",
           "format": "date-time"
@@ -429,7 +453,7 @@
     },
     "PublicMenuSettings": {
       "title": "PublicMenuSettings",
-      "description": "Cabeçalho público sanitizado para exibição do cardápio de consulta.",
+      "description": "Cabeçalho público sanitizado para exibição do cardápio de consulta e opções de pedido.",
       "type": "object",
       "properties": {
         "name": {
@@ -452,6 +476,32 @@
         "themeColor": {
           "type": "string",
           "pattern": "^#[a-fA-F0-9]{6}$"
+        },
+        "businessKind": {
+          "type": "string",
+          "enum": ["food", "retail"]
+        },
+        "onlineOrdersEnabled": {
+          "type": "boolean"
+        },
+        "pickupEnabled": {
+          "type": "boolean"
+        },
+        "pickupMessage": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "deliveryEnabled": {
+          "type": "boolean"
+        },
+        "deliveryMinOrderCents": {
+          "type": "integer"
+        },
+        "deliveryDefaultMinutes": {
+          "type": "integer"
+        },
+        "deliveryAreas": {
+          "type": "array"
         },
         "active": {
           "type": "boolean"
@@ -756,6 +806,51 @@
         },
         "refundCents": {
           "type": "integer"
+        },
+        "orderMode": {
+          "type": "string",
+          "enum": ["dine_in", "table", "pickup", "delivery"]
+        },
+        "onlineOrderId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "trackingToken": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "publicCode": {
+          "type": "string",
+          "maxLength": 20
+        },
+        "deliveryFeeCents": {
+          "type": "integer"
+        },
+        "deliveryAreaId": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "deliveryAreaName": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "deliveryAddress": {
+          "type": "object"
+        },
+        "deliveryStatus": {
+          "type": "string",
+          "enum": ["confirmed", "preparing", "ready_for_pickup", "out_for_delivery", "delivered", "cancelled"]
+        },
+        "paymentIntent": {
+          "type": "string",
+          "enum": ["cash", "pix", "card_on_delivery", "pay_at_counter"]
+        },
+        "changeForCents": {
+          "type": "integer"
+        },
+        "customerPhone": {
+          "type": "string",
+          "maxLength": 30
         },
         "version": {
           "type": "integer"
@@ -1708,6 +1803,78 @@
         }
       },
       "required": ["id", "kind", "active", "version", "updatedAt"]
+    },
+    "OnlineOrderRequest": {
+      "title": "OnlineOrderRequest",
+      "description": "Solicitação de pedido vinda do cardápio digital aguardando confirmação do estabelecimento.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "minLength": 24, "maxLength": 80, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "requestKey": { "type": "string", "minLength": 24, "maxLength": 80, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "trackingToken": { "type": "string", "minLength": 32, "maxLength": 80, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "publicCode": { "type": "string", "minLength": 3, "maxLength": 20 },
+        "source": { "type": "string", "enum": ["public_menu"] },
+        "mode": { "type": "string", "enum": ["table", "pickup", "delivery"] },
+        "tableNumber": { "type": "integer" },
+        "status": {
+          "type": "string",
+          "enum": ["awaiting_confirmation", "confirmed", "preparing", "ready_for_pickup", "out_for_delivery", "delivered", "rejected", "cancelled"]
+        },
+        "statusReason": { "type": "string", "maxLength": 200 },
+        "customerName": { "type": "string", "minLength": 2, "maxLength": 100 },
+        "customerPhone": { "type": "string", "minLength": 8, "maxLength": 30 },
+        "notes": { "type": "string", "maxLength": 300 },
+        "items": { "type": "array" },
+        "subtotalCents": { "type": "integer" },
+        "deliveryAreaId": { "type": "string", "maxLength": 64 },
+        "deliveryAreaName": { "type": "string", "maxLength": 80 },
+        "deliveryFeeCents": { "type": "integer" },
+        "deliveryAddress": { "type": "object" },
+        "estimatedMinutes": { "type": "integer" },
+        "paymentIntent": { "type": "string", "enum": ["cash", "pix", "card_on_delivery", "pay_at_counter"] },
+        "changeForCents": { "type": "integer" },
+        "totalCents": { "type": "integer" },
+        "paidCents": { "type": "integer" },
+        "paymentStatus": { "type": "string", "enum": ["unpaid"] },
+        "convertedOrderId": { "type": "string", "maxLength": 128 },
+        "convertedOrderNumber": { "type": "integer" },
+        "confirmedBy": { "type": "string", "maxLength": 128 },
+        "statusHistory": { "type": "array" },
+        "version": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "requestKey", "trackingToken", "publicCode", "source", "mode", "status", "customerName", "customerPhone", "items", "subtotalCents", "deliveryFeeCents", "paymentIntent", "totalCents", "paidCents", "paymentStatus", "statusHistory", "version", "createdAt", "updatedAt"]
+    },
+    "PublicOrderTracker": {
+      "title": "PublicOrderTracker",
+      "description": "Acompanhamento público sem PII de pedido online via token de alta entropia.",
+      "type": "object",
+      "properties": {
+        "trackingToken": { "type": "string", "minLength": 32, "maxLength": 80, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "requestId": { "type": "string", "minLength": 24, "maxLength": 80, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "publicCode": { "type": "string", "minLength": 3, "maxLength": 20 },
+        "mode": { "type": "string", "enum": ["table", "pickup", "delivery"] },
+        "tableNumber": { "type": "integer" },
+        "areaName": { "type": "string", "maxLength": 80 },
+        "estimatedMinutes": { "type": "integer" },
+        "paymentIntent": { "type": "string", "enum": ["cash", "pix", "card_on_delivery", "pay_at_counter"] },
+        "subtotalCents": { "type": "integer" },
+        "deliveryFeeCents": { "type": "integer" },
+        "totalCents": { "type": "integer" },
+        "status": {
+          "type": "string",
+          "enum": ["awaiting_confirmation", "confirmed", "preparing", "ready_for_pickup", "out_for_delivery", "delivered", "rejected", "cancelled"]
+        },
+        "statusReason": { "type": "string", "maxLength": 200 },
+        "pickupMessage": { "type": "string", "maxLength": 300 },
+        "itemCount": { "type": "integer" },
+        "statusHistory": { "type": "array" },
+        "version": { "type": "integer" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["trackingToken", "requestId", "publicCode", "mode", "paymentIntent", "subtotalCents", "deliveryFeeCents", "totalCents", "status", "itemCount", "statusHistory", "version", "createdAt", "updatedAt"]
     }
   },
   "firestore": {
@@ -1850,6 +2017,14 @@
     "/businesses/{businessId}/tickets/{ticketId}/messages/{messageId}": {
       "schema": { "$ref": "#/entities/TicketMessage" },
       "description": "Mensagens de um chamado de suporte."
+    },
+    "/businesses/{businessId}/onlineOrders/{requestId}": {
+      "schema": { "$ref": "#/entities/OnlineOrderRequest" },
+      "description": "Solicitações públicas de pedido pelo cardápio digital, isoladas de leitura pública."
+    },
+    "/businesses/{businessId}/publicOrderTrackers/{trackingToken}": {
+      "schema": { "$ref": "#/entities/PublicOrderTracker" },
+      "description": "Estado sanitizado e sem PII de solicitação para acompanhamento por token."
     }
   }
 }
